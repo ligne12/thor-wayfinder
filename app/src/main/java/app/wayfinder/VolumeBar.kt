@@ -51,6 +51,7 @@ import app.wayfinder.ui.ThorGlassTheme
 import app.wayfinder.ui.accentStops
 import app.wayfinder.ui.glassSurface
 import app.wayfinder.ui.iisuSlider
+import app.wayfinder.ui.menuCard
 
 /**
  * iiSU fork: the volume bar. The volume keys set the media volume themselves (no FLAG_SHOW_UI: Android's bar stays away)
@@ -223,10 +224,6 @@ object VolumeBar {
             .apply { isDaemon = true; name = "dnd-access" }.start()
     }
 
-    /** The bar's card: iiSU's menu card — light grey in light (the slider's white track and thumb vanished on white). */
-    private fun menuCard(g: app.wayfinder.ui.GlassColors) =
-        if (g.dark) g.surfaceModal else androidx.compose.ui.graphics.Color(app.wayfinder.ui.IisuLook.MENU_LIGHT)
-
     @Composable
     private fun Bar(onRinger: () -> Unit, onLevel: (Int) -> Unit, onRingerMode: (Int) -> Unit, onMore: () -> Unit) {
         val g = LocalGlass.current
@@ -277,20 +274,9 @@ object VolumeBar {
             Text("Sound", color = g.textPrimary, style = MaterialTheme.typography.titleMedium)
             // the ringer mode: three tiles, icon and word; the chosen one in the selection gradient (no tick mark)
             androidx.compose.foundation.layout.Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                for (m in listOf(AudioManager.RINGER_MODE_NORMAL, AudioManager.RINGER_MODE_VIBRATE, AudioManager.RINGER_MODE_SILENT)) {
-                    val on = ringer == m
-                    val tile = RoundedCornerShape(16.dp)
-                    Column(Modifier.weight(1f).height(72.dp)
-                        .then(if (on) Modifier.clip(tile).background(Brush.linearGradient(g.accentStops), tile)
-                              else Modifier.glassSurface(g, tile, well = g.surfaceModal, veil = false))
-                        .clickable { onRingerMode(m) }
-                        .semantics { contentDescription = "Ringer: ${ringerName(m)}" },
-                        horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-                        val ink = if (on) g.onAccent else g.textPrimary
-                        Icon(ringerIcon(m), null, tint = ink, modifier = Modifier.size(24.dp))
-                        Text(ringerLabel(m), color = ink, style = MaterialTheme.typography.labelLarge)
-                    }
-                }
+                for (m in listOf(AudioManager.RINGER_MODE_NORMAL, AudioManager.RINGER_MODE_VIBRATE, AudioManager.RINGER_MODE_SILENT))
+                    app.wayfinder.ui.IisuToggleTile(ringerIcon(m), ringerLabel(m), ringer == m, Modifier.weight(1f),
+                        description = "Ringer: ${ringerName(m)}") { onRingerMode(m) }
             }
             // the volumes, in iiSU's slider: flat fill, a bar for a thumb, big enough for a finger
             var top by androidx.compose.runtime.remember { mutableIntStateOf(LinkedVolume.top()) }
