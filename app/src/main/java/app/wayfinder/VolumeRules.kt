@@ -23,6 +23,27 @@ object VolumeRules {
         else -> NORMAL
     }
 
+    /** Android 13 lets an app into or out of Silent only with Do Not Disturb access (it toggles DND). */
+    fun needsDndAccess(from: Int, to: Int): Boolean = from == SILENT || to == SILENT
+
     /** +1 for Volume up (KEYCODE_VOLUME_UP 24), -1 for Volume down (25), 0 for any other key. */
     fun direction(keyCode: Int): Int = when (keyCode) { 24 -> 1; 25 -> -1; else -> 0 }
+
+    enum class Down { STEP, SWALLOW, PASS }
+
+    /**
+     * Which key downs the bar took, so each up goes where its down went (a call can start mid-press). Android makes no
+     * repeats for a down the accessibility filter consumed, so the bar repeats a held key itself and swallows any the
+     * firmware sends. A down older than [LATE_MS] reached Android already (the filter waits 500 ms): it stays Android's.
+     */
+    class Keys {
+        private val held = mutableSetOf<Int>()
+        fun down(keyCode: Int, repeatCount: Int, ageMs: Long, ours: Boolean): Down = when {
+            repeatCount > 0 -> if (keyCode in held) Down.SWALLOW else Down.PASS
+            !ours || ageMs > LATE_MS -> { held.remove(keyCode); Down.PASS }
+            else -> { held.add(keyCode); Down.STEP }
+        }
+        fun up(keyCode: Int): Boolean = held.remove(keyCode)
+    }
+    const val LATE_MS = 400L
 }

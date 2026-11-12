@@ -121,7 +121,7 @@ object LinkedVolume {
     fun setBoth(level: Int) {
         val t = level.coerceIn(0, MAX)
         suppressUntil = android.os.SystemClock.uptimeMillis() + 600
-        audio.setStreamVolume(AudioManager.STREAM_MUSIC, t, 0)
+        audio.setStreamVolume(AudioManager.STREAM_MUSIC, t, 1 shl 10)   // FLAG_SHOW_UI_WARNINGS (hidden): the headphone safe-volume prompt
         write((t + offset).coerceIn(0, MAX))
     }
 
@@ -129,7 +129,7 @@ object LinkedVolume {
     fun setTopOnly(level: Int) {
         val t = level.coerceIn(0, MAX)
         suppressUntil = android.os.SystemClock.uptimeMillis() + 600
-        audio.setStreamVolume(AudioManager.STREAM_MUSIC, t, 0)
+        audio.setStreamVolume(AudioManager.STREAM_MUSIC, t, 1 shl 10)   // FLAG_SHOW_UI_WARNINGS (hidden): the headphone safe-volume prompt
         learn(bottom() - t)
     }
 

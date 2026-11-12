@@ -2169,6 +2169,7 @@ class ForegroundAppService : AccessibilityService() {
         keyboardOverlay?.hide()
         inputDeck?.hide()
         QuickPanelWindow.close()
+        VolumeBar.close()   // and a held key's repeat
         runCatching { unregisterReceiver(screenPowerReceiver) }
         runCatching { unregisterReceiver(packagesReceiver) }
         // every timer of this instance (the 500 ms profile tick, idle watcher, reconcilers…) and every

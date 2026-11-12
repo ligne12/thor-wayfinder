@@ -72,28 +72,56 @@ object VolumeBar {
     private var ringer by mutableIntStateOf(AudioManager.RINGER_MODE_NORMAL)
     private var wide by androidx.compose.runtime.mutableStateOf(false)
     private val hide = Runnable { fadeOut() }
+    private val keys = VolumeRules.Keys()
+    private var repeat: Runnable? = null
+    // AudioManager.FLAG_SHOW_UI_WARNINGS (hidden): Android's headphone safe-volume prompt, without its bar. With no
+    // flag, a raise past the safe level (10 of 15 on the Thor) is refused silently.
+    private const val WARNINGS = 1 shl 10
 
-    /** The accessibility service's key filter: true = consumed (the down and its up). */
+    /** The accessibility service's key filter: true = consumed. An up goes where its down went ([VolumeRules.Keys]). */
     fun onVolumeKey(service: AccessibilityService, event: KeyEvent, display: Int): Boolean {
         val dir = VolumeRules.direction(event.keyCode)
         if (dir == 0) return false
+        if (event.action == KeyEvent.ACTION_UP) { stopRepeat(); return keys.up(event.keyCode) }
         val audio = service.getSystemService(AudioManager::class.java)
         // screen off, a call: Android's own handling (in-call volume, its bar)
-        if (!service.getSystemService(android.os.PowerManager::class.java).isInteractive || audio.mode != AudioManager.MODE_NORMAL) return false
-        if (event.action == KeyEvent.ACTION_DOWN) adjust(service, if (dir > 0) AudioManager.ADJUST_RAISE else AudioManager.ADJUST_LOWER, display)
-        return true
+        val ours = service.getSystemService(android.os.PowerManager::class.java).isInteractive && audio.mode == AudioManager.MODE_NORMAL
+        return when (keys.down(event.keyCode, event.repeatCount, android.os.SystemClock.uptimeMillis() - event.eventTime, ours)) {
+            VolumeRules.Down.PASS -> false
+            VolumeRules.Down.SWALLOW -> true
+            VolumeRules.Down.STEP -> {
+                val step = if (dir > 0) AudioManager.ADJUST_RAISE else AudioManager.ADJUST_LOWER
+                adjust(service, step, display)
+                // held: Android makes no repeats for a key the filter took, so the bar steps on as Android's would
+                stopRepeat()
+                repeat = object : Runnable { override fun run() {
+                    val before = audio.getStreamVolume(AudioManager.STREAM_MUSIC)
+                    adjust(service, step, display)
+                    // at an end (or after a lost up): stop
+                    if (audio.getStreamVolume(AudioManager.STREAM_MUSIC) != before)
+                        main.postDelayed(this, android.view.ViewConfiguration.getKeyRepeatDelay().toLong())
+                } }.also { main.postDelayed(it, android.view.ViewConfiguration.getKeyRepeatTimeout().toLong()) }
+                true
+            }
+        }
     }
+
+    private fun stopRepeat() { repeat?.let { main.removeCallbacks(it) }; repeat = null }
 
     /** Media volume one step [direction] (ADJUST_RAISE / ADJUST_LOWER), then the bar on [display] (Android's if it can't show). */
     fun adjust(ctx: Context, direction: Int, display: Int) {
         val audio = ctx.getSystemService(AudioManager::class.java)
-        audio.adjustStreamVolume(AudioManager.STREAM_MUSIC, direction, 0)
-        val service = ctx as? AccessibilityService ?: ForegroundAppService.accessibility()
-        if (service == null || !show(service, display))
-            audio.adjustStreamVolume(AudioManager.STREAM_MUSIC, AudioManager.ADJUST_SAME, AudioManager.FLAG_SHOW_UI)
+        audio.adjustStreamVolume(AudioManager.STREAM_MUSIC, direction, WARNINGS)
+        // posted: the key filter answers at once (Android waits 500 ms for it at most, then applies the key itself)
+        main.post {
+            val service = ctx as? AccessibilityService ?: ForegroundAppService.accessibility()
+            if (service == null || !show(service, display))
+                audio.adjustStreamVolume(AudioManager.STREAM_MUSIC, AudioManager.ADJUST_SAME, AudioManager.FLAG_SHOW_UI)
+        }
     }
 
     fun close() {
+        stopRepeat()
         main.removeCallbacks(hide)
         val v = view ?: return
         runCatching { wm?.removeViewImmediate(v) }
@@ -118,8 +146,8 @@ object VolumeBar {
     /** Shows or updates the bar on [display]; false if the window couldn't be added. */
     private fun show(service: AccessibilityService, display: Int): Boolean {
         read(service)
-        app.wayfinder.ui.IisuLookSource.refreshAsync(service)   // iiSU's theme, font, glass colour may have changed
         if (view != null && shownOn == display) { bump(); return true }
+        app.wayfinder.ui.IisuLookSource.refreshAsync(service)   // iiSU's theme, font, glass colour may have changed
         close()   // one bar at a time: the controller moved to the other screen
         val d = service.getSystemService(android.hardware.display.DisplayManager::class.java).getDisplay(display) ?: return false
         val ctx = android.view.ContextThemeWrapper(service.createDisplayContext(d), R.style.Theme_Wayfinder_Glass)
@@ -136,18 +164,15 @@ object VolumeBar {
                     Bar(
                         onRinger = {
                             val audio = ctx.getSystemService(AudioManager::class.java)
-                            val dnd = ctx.getSystemService(android.app.NotificationManager::class.java).isNotificationPolicyAccessGranted
-                            runCatching { audio.ringerMode = VolumeRules.nextRingerMode(audio.ringerMode, dnd) }
-                            read(ctx)
+                            val dnd = ctx.getSystemService(android.app.NotificationManager::class.java).isNotificationPolicyAccessGranted ||
+                                PServiceBridge.isAvailable()   // cached by the look's read when the bar opened
+                            setRinger(ctx, VolumeRules.nextRingerMode(audio.ringerMode, dnd))
                         },
                         onLevel = { v ->
-                            ctx.getSystemService(AudioManager::class.java).setStreamVolume(AudioManager.STREAM_MUSIC, v, 0)
+                            ctx.getSystemService(AudioManager::class.java).setStreamVolume(AudioManager.STREAM_MUSIC, v, WARNINGS)
                             read(ctx)
                         },
-                        onRingerMode = { m ->
-                            runCatching { ctx.getSystemService(AudioManager::class.java).ringerMode = m }
-                            read(ctx)
-                        },
+                        onRingerMode = { m -> setRinger(ctx, m) },
                         onMore = { wide = true; bump() },
                     )
                 } }
@@ -174,6 +199,22 @@ object VolumeBar {
             android.util.Log.w("ThorVolumeBar", "addView: ${t.javaClass.simpleName}: ${t.message}")
             false
         }
+    }
+
+    /**
+     * Ringer [mode]. Into or out of Silent, Android asks for Do Not Disturb access: granted once, on the first such
+     * touch, through AYN's root service (the panel's Do Not Disturb switch already goes through it).
+     */
+    private fun setRinger(ctx: Context, mode: Int) {
+        val audio = ctx.getSystemService(AudioManager::class.java)
+        val set = {
+            runCatching { audio.ringerMode = mode }.onFailure { android.util.Log.w("ThorVolumeBar", "ringer: ${it.javaClass.simpleName}") }
+            read(ctx)
+        }
+        if (!VolumeRules.needsDndAccess(audio.ringerMode, mode) ||
+            ctx.getSystemService(android.app.NotificationManager::class.java).isNotificationPolicyAccessGranted) { set(); return }
+        Thread { PServiceBridge.exec("cmd notification allow_dnd ${ctx.packageName}"); main.post { set() } }
+            .apply { isDaemon = true; name = "dnd-access" }.start()
     }
 
     @Composable

@@ -21,6 +21,8 @@
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <!-- Speaker tuning: an audio effect on the output mix. -->
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+    <!-- iiSU fork: the volume bar's Silent (Android asks for Do Not Disturb access; granted through the root service) -->
+    <uses-permission android:name="android.permission.ACCESS_NOTIFICATION_POLICY" />
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <!-- 1.4: after a restart, check Wayfinder's service came back (Android can stop it while the Thor starts) -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />

@@ -31,4 +31,36 @@ class VolumeRulesTest {
     @Test fun direction_volumeKeysOnly() {
         assertEquals(1, VolumeRules.direction(24)); assertEquals(-1, VolumeRules.direction(25)); assertEquals(0, VolumeRules.direction(96))
     }
+
+    @Test fun needsDndAccess_intoOrOutOfSilent() {
+        assertEquals(true, VolumeRules.needsDndAccess(VIBRATE, SILENT)); assertEquals(true, VolumeRules.needsDndAccess(SILENT, NORMAL))
+        assertEquals(false, VolumeRules.needsDndAccess(NORMAL, VIBRATE))
+    }
+
+    @Test fun keys_upFollowsItsDown() {
+        val k = VolumeRules.Keys()
+        assertEquals(VolumeRules.Down.STEP, k.down(24, repeatCount = 0, ageMs = 5, ours = true))
+        assertEquals(true, k.up(24))
+        assertEquals(false, k.up(24))   // an up with no consumed down is Android's
+    }
+
+    @Test fun keys_passedDownPassesItsUp_evenIfTheModeChanged() {
+        val k = VolumeRules.Keys()
+        assertEquals(VolumeRules.Down.PASS, k.down(25, repeatCount = 0, ageMs = 5, ours = false))   // a call began
+        assertEquals(false, k.up(25))
+    }
+
+    @Test fun keys_lateDownIsAndroids() {
+        val k = VolumeRules.Keys()
+        // past the filter's timeout Android has already applied it: stepping again would count it twice
+        assertEquals(VolumeRules.Down.PASS, k.down(24, repeatCount = 0, ageMs = 450, ours = true))
+        assertEquals(false, k.up(24))
+    }
+
+    @Test fun keys_repeatsOfAConsumedDownAreSwallowed() {
+        val k = VolumeRules.Keys()
+        k.down(24, repeatCount = 0, ageMs = 5, ours = true)
+        assertEquals(VolumeRules.Down.SWALLOW, k.down(24, repeatCount = 3, ageMs = 5, ours = true))   // the bar repeats it itself
+        assertEquals(VolumeRules.Down.PASS, k.down(25, repeatCount = 3, ageMs = 5, ours = true))
+    }
 }
