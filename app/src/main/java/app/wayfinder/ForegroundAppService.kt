@@ -29,6 +29,8 @@ import java.util.concurrent.ConcurrentHashMap
 class ForegroundAppService : AccessibilityService() {
 
     companion object {
+        /** iiSU fork: how long after a wake the windows may not be listed yet ([applyFps]). */
+        private const val WINDOWS_SETTLE_MS = 2500L
         private const val TAG = "ThorFgSvc"
         private const val PRIMARY_DISPLAY = 0   // built-in main (top) screen
 
@@ -1567,6 +1569,7 @@ class ForegroundAppService : AccessibilityService() {
                 }
                 Intent.ACTION_SCREEN_ON -> {
                     screenOn = true
+                    windowsSettleUntil = android.os.SystemClock.uptimeMillis() + WINDOWS_SETTLE_MS   // iiSU fork
                     InputMonitor.send("S 1")
                     NavBarGuard.poke()   // 1.3 (GitHub #23)
                     app.wayfinder.lights.StickLights.resume(this@ForegroundAppService); SleepEngine.onScreenOn(); GyroEngine.setScreenOn(true)
@@ -2016,6 +2019,7 @@ class ForegroundAppService : AccessibilityService() {
 
     override fun onServiceConnected() {
         super.onServiceConnected()
+        windowsSettleUntil = android.os.SystemClock.uptimeMillis() + WINDOWS_SETTLE_MS   // iiSU fork
 
         // THIS is why back button wasn't intercepted before:
         // canRequestFilterKeyEvents in XML sets the CAPABILITY but the
@@ -2974,6 +2978,14 @@ class ForegroundAppService : AccessibilityService() {
 
     /** Watch the top-screen app while the counter is on (sampled by the root helper). */
     /** FPS counter on the chosen screen(s), in the chosen corner. */
+    /**
+     * iiSU fork: right after the screens wake (or the service connects) Android 13 makes getWindowsOnAllDisplays() wait up to
+     * 5 s for a display's windows — on the main thread that was "Wayfinder isn't responding" (ANR, SCREEN_ON broadcast).
+     * Until then the frame-rate counter uses only the apps already tracked and looks again once the windows are there.
+     */
+    @Volatile private var windowsSettleUntil = 0L
+    private val fpsAfterSettle = Runnable { fpsWatching = null; applyFps() }
+
     fun applyFps() {
         // the idle watcher (every 2 s) and a helper reconnect both land here: with the screen off
         // they restarted the frame-rate sampler all night (review 2026-09-25)
@@ -2985,7 +2997,9 @@ class ForegroundAppService : AccessibilityService() {
         // stayed over the page there, reading "idle" once the game under it stopped. Only the counter steps aside: the game is
         // still counted for the pause watch (countTop / countBottom below)
         val covered = controlsAt?.takeIf { controlsReturnTo != null }
-        fun appOn(d: Int?) = d?.takeIf { it != hubOn && it != covered }?.let { displayApps[it] ?: appOnDisplay(it) }?.takeIf { Shell.isPkg(it) && it !in ignoredPackages && it !in launcherPackages }
+        val settling = android.os.SystemClock.uptimeMillis() < windowsSettleUntil
+        if (settling) { handler.removeCallbacks(fpsAfterSettle); handler.postAtTime(fpsAfterSettle, windowsSettleUntil) }
+        fun appOn(d: Int?) = d?.takeIf { it != hubOn && it != covered }?.let { displayApps[it] ?: if (settling) null else appOnDisplay(it) }?.takeIf { Shell.isPkg(it) && it !in ignoredPackages && it !in launcherPackages }
         val second = secondDisplayId()
         val on = AppSettings.fpsCounter
         // 1.3 (GitHub #22): an app / game can turn the counter on or off for itself
