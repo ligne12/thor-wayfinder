@@ -468,7 +468,7 @@ internal fun IisuSwitch(checked: Boolean) {
     val g = LocalGlass.current
     val at by androidx.compose.animation.core.animateFloatAsState(if (checked) 1f else 0f, label = "switch")
     androidx.compose.foundation.layout.Box(Modifier.size(width = 52.dp, height = 30.dp)
-        .background(if (checked) Brush.linearGradient(listOf(g.accent, g.accent2)) else Brush.linearGradient(
+        .background(if (checked) Brush.linearGradient(g.accentStops) else Brush.linearGradient(
             listOf(g.textTertiary.copy(alpha = 0.22f), g.textTertiary.copy(alpha = 0.22f))), CapsuleShape)) {
         androidx.compose.foundation.layout.Box(Modifier.padding(3.dp).offset(x = 22.dp * at).size(24.dp)
             .background(Color.White, androidx.compose.foundation.shape.CircleShape)

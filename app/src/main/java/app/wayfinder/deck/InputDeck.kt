@@ -1,5 +1,6 @@
 package app.wayfinder.deck
 
+import app.wayfinder.ui.accentStops
 import android.accessibilityservice.AccessibilityService
 import android.graphics.PixelFormat
 import android.hardware.display.DisplayManager
@@ -403,7 +404,7 @@ private fun Tab(label: String?, icon: ImageVector, selected: Boolean, onClick: (
     Row(
         UiModifier.fillMaxHeight().clip(RoundedCornerShape(Radii.Control))
             .background(
-                if (selected) Brush.linearGradient(listOf(g.accent, g.accent2))
+                if (selected) Brush.linearGradient(g.accentStops)
                 else Brush.linearGradient(listOf(g.fillSubtle, g.fillSubtle))
             )
             .pointerInput(onClick) { detectTapGestures { onClick() } }
@@ -445,7 +446,7 @@ private fun DeckKeyCap(st: DeckState, k: DeckKey, modifier: UiModifier) {
         modifier.clip(shape)
             .background(
                 when {
-                    latched -> Brush.linearGradient(listOf(g.accent, g.accent2))
+                    latched -> Brush.linearGradient(g.accentStops)
                     pressed -> g.keyPressed
                     else -> g.keyFill(functional = false)
                 }, shape,
@@ -741,7 +742,7 @@ private fun AynMouseLink(modifier: UiModifier) {
     val shape = RoundedCornerShape(Radii.Control)
     Box(
         modifier.clip(shape)
-            .background(if (on) Brush.linearGradient(listOf(g.accent, g.accent2)) else Brush.linearGradient(listOf(g.fillChip, g.fillChip)), shape)
+            .background(if (on) Brush.linearGradient(g.accentStops) else Brush.linearGradient(listOf(g.fillChip, g.fillChip)), shape)
             .glassLight(shape, g.dark)
             .pointerInput(Unit) {
                 detectTapGestures {

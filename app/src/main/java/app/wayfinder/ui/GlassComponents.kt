@@ -467,7 +467,7 @@ private val SCROLL_FADE_BLEED = 16.dp
 /** dev build 17 (WP8): what "selected" looks like — the accent gradient with a top gloss (the segmented control's fill). With
  *  a check ([GlassOption]): a ring always means focus. */
 fun Modifier.selectedFill(g: GlassColors, shape: Shape): Modifier =
-    background(Brush.linearGradient(listOf(g.accent, g.accent2)), shape)
+    background(Brush.linearGradient(g.accentStops), shape)
         .background(Brush.verticalGradient(listOf(Color(0x40FFFFFF), Color.Transparent)), shape)
 
 /**

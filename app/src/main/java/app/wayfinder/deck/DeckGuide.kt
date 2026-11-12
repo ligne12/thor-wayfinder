@@ -1,5 +1,6 @@
 package app.wayfinder.deck
 
+import app.wayfinder.ui.accentStops
 import android.annotation.SuppressLint
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -159,7 +160,7 @@ private fun Chip(text: String, selected: Boolean, onClick: () -> Unit) {
     Box(
         UiModifier.fillMaxHeight().clip(RoundedCornerShape(Radii.Chip))
             .background(
-                if (selected) Brush.linearGradient(listOf(g.accent, g.accent2))
+                if (selected) Brush.linearGradient(g.accentStops)
                 else Brush.linearGradient(listOf(g.fillSubtle, g.fillSubtle))
             )
             .pointerInput(onClick) { detectTapGestures { onClick() } }

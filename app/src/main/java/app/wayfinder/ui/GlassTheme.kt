@@ -94,6 +94,8 @@ data class GlassColors(
 
 // dev build 17 (WP8): the derived tokens — they only follow light / dark ("Your own colours" sets [GlassColors.dark] from its
 // background, so they follow it too)
+/** iiSU fork: iiSU's accent gradient — sky, blue, violet (its switch track, measured). Every accent fill draws with it. */
+val GlassColors.accentStops: List<Color> get() = listOf(Color(IisuLook.SKY), accent, accent2)
 /** The dim behind popups and sheets. */
 val GlassColors.modalDim: Color get() = Color(TokenArgb.MODAL_DIM)
 /** Keyboard overlay and input deck base. */

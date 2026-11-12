@@ -35,7 +35,8 @@ data class IisuLook(
     companion object {
         // iiSU's own controls (switch track, selected text), measured on its settings: sky #6CACE2 → blue #6E84DF → violet
         // #9675E3. Not a setting in iiSU, so fixed here.
-        const val ACCENT = 0xFF6C9AE1.toInt()
+        const val SKY = 0xFF6CACE2.toInt()
+        const val ACCENT = 0xFF6E84DF.toInt()
         const val ACCENT2 = 0xFF9675E3.toInt()
         /** The focus colour when iiSU has none stored: its selected-text blue-violet. */
         const val FOCUS_DEFAULT = 0xFF7472D5.toInt()

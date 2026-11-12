@@ -1,5 +1,6 @@
 package app.wayfinder.keyboard
 
+import app.wayfinder.ui.accentStops
 import android.view.HapticFeedbackConstants
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
@@ -243,7 +244,7 @@ private fun BarButton(icon: ImageVector?, label: String?, onClick: () -> Unit, b
     Row(
         Modifier.fillMaxHeight().clip(shape)
             .background(g.fillSubtle)
-            .then(if (lit) Modifier.border(2.5.dp, Brush.linearGradient(listOf(g.accent, g.accent2)), shape) else Modifier)
+            .then(if (lit) Modifier.border(2.5.dp, Brush.linearGradient(g.accentStops), shape) else Modifier)
             .pointerInput(Unit) { detectTapGestures { click() } }
             .padding(horizontal = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -267,7 +268,7 @@ private fun KeyCap(kb: KeyboardController, key: KeySpec, row: Int, col: Int, foc
     val accentKey = key.kind == KeyKind.ENTER ||
         (key.kind == KeyKind.SHIFT && kb.shift != Shift.OFF)
     val shape = RoundedCornerShape(if (big) Radii.Control else Radii.KeyCap)
-    val fill = if (accentKey) Brush.verticalGradient(listOf(g.accent, g.accent2)) else g.keyFill(functional)
+    val fill = if (accentKey) Brush.verticalGradient(g.accentStops) else g.keyFill(functional)
     val tap: () -> Unit = {
         view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
         kb.press(key)
@@ -281,7 +282,7 @@ private fun KeyCap(kb: KeyboardController, key: KeySpec, row: Int, col: Int, foc
             .glassLight(shape, g.dark)
             .border(
                 if (focused) 2.5.dp else 1.dp,
-                if (focused) Brush.linearGradient(listOf(g.accent, g.accent2))
+                if (focused) Brush.linearGradient(g.accentStops)
                 else Brush.linearGradient(0f to g.rimTop.copy(alpha = 0.7f), 0.5f to Color.Transparent, 1f to g.rimBottom),
                 shape,
             )
