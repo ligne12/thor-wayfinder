@@ -14,7 +14,7 @@ object IisuLookParser {
         if (prefs.isEmpty()) return null
         return IisuLook(
             dark = when (prefs["theme_mode"] as? String) { "DARK" -> true; "LIGHT" -> false; else -> null },
-            accent = (prefs["focus_indicator_primary_color_argb"] as? Long)?.toInt(),
+            focus = (prefs["focus_indicator_primary_color_argb"] as? Long)?.toInt(),
             glassOpacity = (prefs["home_glass_opacity"] as? Float)?.takeIf { it in 0f..1f },
             glassTint = (prefs["home_glass_tint_color_argb"] as? Long)?.toInt(),
             glassOutline = prefs["glass_outline_enabled"] as? Boolean,

@@ -355,7 +355,7 @@ fun Modifier.focusIndicator(shape: Shape, inset: Boolean = false): Modifier = co
             val pad = if (inset) -2.dp.toPx() else 3.dp.toPx()
             val w = size.width + 2 * pad; val h = size.height + 2 * pad
             if (w <= 0f || h <= 0f) return@drawBehind
-            paint.color = g.accent.copy(alpha = (if (inset) 0.6f else 0.75f) * halo).toArgb()
+            paint.color = g.accent2.copy(alpha = (if (inset) 0.25f else 0.35f) * halo).toArgb()   // iiSU fork: a faint glow
             val outline = shape.createOutline(Size(w, h), layoutDirection, this)
             drawIntoCanvas { c ->
                 val n = c.nativeCanvas
@@ -376,12 +376,13 @@ fun Modifier.focusIndicator(shape: Shape, inset: Boolean = false): Modifier = co
         .drawWithContent {
             drawContent()
             if (halo <= 0.01f) return@drawWithContent
-            val stroke = 2.dp.toPx()
+            // iiSU fork: iiSU's ring — 3 dp, its focus colour at the top fading to violet at the bottom
+            val stroke = (if (inset) 2.dp else 3.dp).toPx()
             val pad = if (inset) -stroke / 2f else 2.dp.toPx() + stroke / 2f
             val w = size.width + 2 * pad; val h = size.height + 2 * pad
             if (w <= 0f || h <= 0f) return@drawWithContent
             val outline = shape.createOutline(Size(w, h), layoutDirection, this)
-            translate(-pad, -pad) { drawOutline(outline, g.focusRing.copy(alpha = g.focusRing.alpha * halo), style = Stroke(stroke)) }
+            translate(-pad, -pad) { drawOutline(outline, Brush.verticalGradient(listOf(g.focusRing, g.accent2), 0f, h), alpha = halo, style = Stroke(stroke)) }
         }
 }
 

@@ -10,7 +10,7 @@ import androidx.compose.runtime.setValue
  */
 data class IisuLook(
     val dark: Boolean? = null,        // null: iiSU follows the system, or nothing was read
-    val accent: Int? = null,          // ARGB
+    val focus: Int? = null,           // ARGB: iiSU's focus indicator colour (Style)
     val glassOpacity: Float? = null,  // 0..1
     val glassTint: Int? = null,       // ARGB, alpha = strength
     val glassOutline: Boolean? = null,
@@ -25,10 +25,20 @@ data class IisuLook(
         return CustomColours(
             bg = if (dark) 0xFF1C1C20.toInt() else 0xFFF2F2F2.toInt(),
             card = (tint and 0x00FFFFFF) or (Math.round(opacity * 255) shl 24),
-            text = if (dark) 0xFFF2F2F2.toInt() else 0xFF2B2B2B.toInt(),
-            accent = (accent ?: 0xFF6C7BFF.toInt()) or 0xFF000000.toInt(),
+            text = if (dark) 0xFFF2F2F2.toInt() else 0xFF4E4A56.toInt(),
+            accent = ACCENT, accent2 = ACCENT2,
+            ring = (focus ?: FOCUS_DEFAULT) or 0xFF000000.toInt(),
             outline = glassOutline ?: true,
         )
+    }
+
+    companion object {
+        // iiSU's own controls (switch track, selected text), measured on its settings: sky #6CACE2 → blue #6E84DF → violet
+        // #9675E3. Not a setting in iiSU, so fixed here.
+        const val ACCENT = 0xFF6C9AE1.toInt()
+        const val ACCENT2 = 0xFF9675E3.toInt()
+        /** The focus colour when iiSU has none stored: its selected-text blue-violet. */
+        const val FOCUS_DEFAULT = 0xFF7472D5.toInt()
     }
 
     /** Wayfinder's theme setting for this look: iiSU's light or dark, else the system's. */

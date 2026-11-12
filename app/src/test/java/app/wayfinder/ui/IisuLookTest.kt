@@ -19,14 +19,14 @@ class IisuLookTest {
 
     @Test fun parse_sampleLight_readsEveryField() {
         val look = IisuLookParser.parse(sample("sample-light.pb"))
-        assertEquals(IisuLook(dark = false, accent = 0xFF699CA1.toInt(), glassOpacity = 0.45f, glassTint = 0xFF4D7CFE.toInt(),
+        assertEquals(IisuLook(dark = false, focus = 0xFF699CA1.toInt(), glassOpacity = 0.45f, glassTint = 0xFF4D7CFE.toInt(),
             glassOutline = false, font = "cal_sans"), look)
     }
 
     @Test fun parse_sampleDark_readsDark_andLeavesUnsetGlassNull() {
         val look = IisuLookParser.parse(sample("sample-dark.pb"))
         assertEquals(true, look.dark)
-        assertEquals(0xFF74E3EE.toInt(), look.accent)
+        assertEquals(0xFF74E3EE.toInt(), look.focus)
         assertEquals(null, look.glassOpacity)
         assertEquals(null, look.glassTint)
     }
@@ -53,6 +53,14 @@ class IisuLookTest {
         assertEquals(0xFFFFFF, rgb(IisuLook(glassTint = 0x004D7CFE)))                 // strength 0: iiSU's untinted glass
         assertEquals(0x4D7CFE, rgb(IisuLook(glassTint = 0xFF4D7CFE.toInt())))         // full strength
         assertEquals(0xFFFFFF, rgb(IisuLook()))
+    }
+
+    @Test fun colours_ringIsIisusFocus_accentIsIisusOwnBlueViolet() {
+        val c = IisuLook(focus = 0xFF699CA1.toInt()).colours(dark = false)
+        assertEquals(0xFF699CA1.toInt(), c.ring)
+        assertEquals(IisuLook.ACCENT, c.accent)
+        assertEquals(IisuLook.ACCENT2, c.accent2)
+        assertEquals(IisuLook.FOCUS_DEFAULT, IisuLook().colours(dark = true).ring)
     }
 
     @Test fun themeMode_followsIisu_orTheSystem() {

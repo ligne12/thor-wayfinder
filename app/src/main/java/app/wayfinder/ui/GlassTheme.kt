@@ -42,12 +42,12 @@ object Radii {
     val Chip = 12.dp      // compact buttons and chips in dense places (GlassButton COMPACT, popup tabs, lists in popups)
     val Control = 14.dp   // a control: option / segment, choice row, text field, notice, inner switch row, GlassButton REGULAR
     val Row = 16.dp       // a page-level pill or row: Back pill, GlassListRow, header pill groups, listen / record buttons
-    val Card = 24.dp      // a setting card, a quick-panel card, an app row
+    val Card = 20.dp      // a setting card, a quick-panel card, an app row
     val Action = 20.dp    // GlassActionButton tiles
     val Tile = 20.dp      // the Hub's small tiles and strip, the combo capture card
-    val Panel = 26.dp     // a panel (GlassPanel / FocusableGlass default), Game controls' drawing panel
-    val Modal = 26.dp     // popups and sheets
-    val Large = 28.dp     // the Hub's menu cards, the tour card
+    val Panel = 20.dp     // a panel (GlassPanel / FocusableGlass default), Game controls' drawing panel
+    val Modal = 20.dp     // popups and sheets
+    val Large = 24.dp     // the Hub's menu cards, the tour card
     val Swatch = 24.dp    // a colour swatch's round glass (half its 48 dp)
     /** A fill drawn [by] inside a rounded element (DirArm's changed fill): its radius. */
     fun inset(outer: Dp, by: Dp = 2.dp) = outer - by
@@ -162,8 +162,10 @@ fun CappedFontScale(max: Float = 1.1f, content: @Composable () -> Unit) {
 }
 
 /** dev build 17 (WP8): "Your own colours" (AppSettings.customColours): background, cards, text, accent (ARGB). */
-/** iiSU fork: [card] keeps its alpha (the glass opacity); [outline] = the glass rim. */
-class CustomColours(val bg: Int, val card: Int, val text: Int, val accent: Int, val outline: Boolean = true)
+/** iiSU fork: [card] keeps its alpha (the glass opacity); [outline] = the glass rim; [accent2] and [ring] override the
+ *  derived ones (null: derived as before). */
+class CustomColours(val bg: Int, val card: Int, val text: Int, val accent: Int, val outline: Boolean = true,
+                    val accent2: Int? = null, val ring: Int? = null)
 
 /** dev build 17 (WP8): the theme's colours from its three inputs — the composable theme and (WP10) the overlays read this
  *  one answer. [custom] = "Your own colours" (null: off). */
@@ -265,13 +267,13 @@ fun glassColorsFor(dark: Boolean, black: Boolean, custom: CustomColours?): Glass
         textPrimary = text,
         textSecondary = text.copy(alpha = TokenArgb.minAlpha(TokenArgb.of(custom.text), cardArgb, 4.5, 0.82).toFloat()),
         textTertiary = text.copy(alpha = TokenArgb.minAlpha(TokenArgb.of(custom.text), cardArgb, 3.0, 0.58).toFloat()),
-        accent = acc, accent2 = acc.compositeOverSelf(Color(0xFF8A7BFF), 0.35f),
+        accent = acc, accent2 = custom.accent2?.let { Color(it) } ?: acc.compositeOverSelf(Color(0xFF8A7BFF), 0.35f),
         // dev build 17 (WP8): red and amber follow the background's light or dark; the popup card and the wash are the card's
         danger = Color(TokenArgb.danger(!lightBg)), warn = Color(TokenArgb.warn(!lightBg)),
         surfaceModal = Color(TokenArgb.surfaceModal(!lightBg, cardArgb)), wash = Color(TokenArgb.wash(!lightBg, cardArgb)),
         onAccent = Color(TokenArgb.onAccent(TokenArgb.of(custom.accent))),
         // build 18 (A1 / A3): the ring reads on their accent and card; the unselected option's base is their card
-        focusRing = Color(TokenArgb.focusRing(!lightBg, TokenArgb.of(custom.accent), TokenArgb.of(custom.text), cardArgb)),
+        focusRing = custom.ring?.let { Color(it) } ?: Color(TokenArgb.focusRing(!lightBg, TokenArgb.of(custom.accent), TokenArgb.of(custom.text), cardArgb)),
         optionWell = Color(TokenArgb.optionWell(!lightBg, cardArgb)),
         positive = Color(TokenArgb.positive(!lightBg, cardArgb)),       // build 18 (A23): the green that reads on their card
     )
