@@ -301,14 +301,14 @@ object GlassTokens {
     }
     /** The colours a Wayfinder window on [ctx]'s display draws with — black and "Your own colours" included. */
     fun resolve(ctx: android.content.Context): GlassColors = isDark(ctx).let { dark ->
-        glassColorsFor(dark, false, IisuLookSource.current.colours(dark))   // iiSU fork: the look comes from iiSU
+        IisuLookSource.current.glass(dark)   // iiSU fork: the look comes from iiSU
     }
 }
 
 @Composable
 fun ThorGlassTheme(dark: Boolean, content: @Composable () -> Unit) {
     // dev build 17 (WP8): one builder (glassColorsFor) — WP10's overlays read the same answer
-    val colors = glassColorsFor(dark, false, IisuLookSource.current.colours(dark))   // iiSU fork: the look comes from iiSU
+    val colors = IisuLookSource.current.glass(dark)   // iiSU fork: the look comes from iiSU
     val scheme = if (colors.dark)
         darkColorScheme(primary = colors.accent, background = colors.base, surface = Color(0xFF161B3A))
     else

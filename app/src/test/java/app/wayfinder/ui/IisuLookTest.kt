@@ -63,6 +63,15 @@ class IisuLookTest {
         assertEquals(IisuLook.FOCUS_DEFAULT, IisuLook().colours(dark = true).ring)
     }
 
+    @Test fun glass_cardsAreIisusVeil_followingItsGlass() {
+        val plain = IisuLook(glassOpacity = 0.45f).glass(dark = false).panel
+        assertEquals(0.13f, plain.alpha, 0.01f)                                     // iiSU's empty tile: 13 % black
+        assertEquals(0f, plain.red + plain.green + plain.blue, 0.01f)
+        assertEquals(0.26f, IisuLook(glassOpacity = 0.9f).glass(dark = true).panel.alpha, 0.01f)
+        val red = IisuLook(glassTint = 0xFFFF0000.toInt()).glass(dark = false).panel
+        assertEquals(1f, red.red, 0.01f)                                            // a full-strength tint colours the veil
+    }
+
     @Test fun themeMode_followsIisu_orTheSystem() {
         assertEquals(ThemeMode.DARK, IisuLook(dark = true).themeMode())
         assertEquals(ThemeMode.LIGHT, IisuLook(dark = false).themeMode())

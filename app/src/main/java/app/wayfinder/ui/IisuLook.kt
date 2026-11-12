@@ -1,6 +1,8 @@
 package app.wayfinder.ui
 
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 
@@ -42,6 +44,19 @@ data class IisuLook(
         const val ACCENT2 = 0xFF9675E3.toInt()
         /** The focus colour when iiSU has none stored: its selected-text blue-violet. */
         const val FOCUS_DEFAULT = 0xFF7472D5.toInt()
+    }
+
+    /**
+     * The theme for this look. Cards and tiles take the look of iiSU's empty home tiles: a dark veil over the backdrop
+     * (13 % black at iiSU's 0.45 glass opacity, measured on both themes — the dots show through), tinted by its glass tint.
+     */
+    fun glass(dark: Boolean): GlassColors {
+        val base = glassColorsFor(dark, false, colours(dark))
+        val strength = ((glassTint ?: 0) ushr 24) / 255.0
+        val tint = TokenArgb.mix(0xFF000000, TokenArgb.of(glassTint ?: 0), strength)
+        val veil = Color(tint.toInt()).copy(alpha = (0.29f * (glassOpacity ?: 0.45f)).coerceIn(0.04f, 0.6f))
+        val fill = Brush.verticalGradient(listOf(veil, veil))
+        return base.copy(panelFill = fill, panelFillFocused = fill, panel = veil)
     }
 
     /** Wayfinder's theme setting for this look: iiSU's light or dark, else the system's. */

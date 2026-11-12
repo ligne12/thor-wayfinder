@@ -231,15 +231,15 @@ fun Modifier.glassSurface(
     raised: Boolean = false,
     well: Color = Color.Unspecified,
 ): Modifier = this
-    // iiSU fork: iiSU's cards have no edge line but a soft shadow. Drawn outside the shape only — an elevation shadow shows
+    // iiSU fork: iiSU's tiles sit on a tight shadow just below. Drawn outside the shape only — an elevation shadow shows
     // through translucent glass and greys it.
     .drawWithCache {
         val path = androidx.compose.ui.graphics.Path().apply { addOutline(shape.createOutline(size, layoutDirection, this@drawWithCache)) }
         val paint = android.graphics.Paint().apply {
-            color = if (g.dark) 0x4D000000 else 0x1A000000
-            maskFilter = android.graphics.BlurMaskFilter(10.dp.toPx(), android.graphics.BlurMaskFilter.Blur.NORMAL)
+            color = if (g.dark) 0x59000000 else 0x1F000000
+            maskFilter = android.graphics.BlurMaskFilter(4.dp.toPx(), android.graphics.BlurMaskFilter.Blur.NORMAL)
         }
-        val dy = 3.dp.toPx()
+        val dy = 1.5f * density
         onDrawBehind {
             clipPath(path, androidx.compose.ui.graphics.ClipOp.Difference) {
                 translate(0f, dy) { drawContext.canvas.nativeCanvas.drawPath(path.asAndroidPath(), paint) }
@@ -250,6 +250,14 @@ fun Modifier.glassSurface(
     .glassLens(shape)
     .then(if (well.isSpecified) Modifier.background(well, shape) else Modifier)
     .background(if (raised) g.panelFillFocused else g.panelFill, shape)
+    // iiSU fork: iiSU's inner glow — a light band inside the edge, fading out over about 5 dp (measured: +40 % white at the
+    // edge on light, +14 % on dark). Strokes on the clipped edge: only their inner half shows.
+    .drawWithCache {
+        val o = shape.createOutline(size, layoutDirection, this)
+        val a = if (g.dark) 0.14f else 0.40f
+        val bands = listOf(3.dp.toPx() to 0.5f, 6.dp.toPx() to 0.3f, 10.dp.toPx() to 0.25f)
+        onDrawBehind { for ((w, k) in bands) drawOutline(o, Color.White.copy(alpha = a * k), style = Stroke(w)) }
+    }
     .glassLight(shape, g.dark)
     .border(1.dp, Brush.verticalGradient(listOf(g.rimTop, g.rimBottom)), shape)   // iiSU fork: a line all round
 
