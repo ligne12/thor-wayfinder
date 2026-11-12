@@ -20,7 +20,7 @@ class IisuLookTest {
     @Test fun parse_sampleLight_readsEveryField() {
         val look = IisuLookParser.parse(sample("sample-light.pb"))
         assertEquals(IisuLook(dark = false, focus = 0xFF699CA1.toInt(), glassOpacity = 0.45f, glassTint = 0xFF4D7CFE.toInt(),
-            glassOutline = false, font = "cal_sans", ringTurns = true), look)
+            glassOutline = false, font = "cal_sans", ringTurns = true, customGradient = true, blur = true), look)
     }
 
     @Test fun parse_sampleDark_readsDark_andLeavesUnsetGlassNull() {
@@ -48,28 +48,77 @@ class IisuLookTest {
         assertEquals(IisuLook(font = "cal_sans"), look)
     }
 
-    @Test fun glassTint_alphaIsItsStrength() {
-        fun rgb(look: IisuLook) = look.colours(dark = false).card and 0x00FFFFFF
-        assertEquals(0xFFFFFF, rgb(IisuLook(glassTint = 0x004D7CFE)))                 // strength 0: iiSU's untinted glass
-        assertEquals(0x4D7CFE, rgb(IisuLook(glassTint = 0xFF4D7CFE.toInt())))         // full strength
-        assertEquals(0xFFFFFF, rgb(IisuLook()))
-    }
-
-    @Test fun colours_ringIsIisusFocus_accentIsIisusOwnBlueViolet() {
-        val c = IisuLook(focus = 0xFF699CA1.toInt()).colours(dark = false)
+    @Test fun colours_ringIsThePrimary_accentTheGradientsMiddle() {
+        val look = IisuLook(focus = 0xFF699CA1.toInt(), customGradient = true)
+        val c = look.colours(dark = false)
         assertEquals(0xFF699CA1.toInt(), c.ring)
-        assertEquals(IisuLook.ACCENT, c.accent)
+        assertEquals(look.selection().second, c.accent)
         assertEquals(IisuLook.ACCENT2, c.accent2)
-        assertEquals(IisuLook.FOCUS_DEFAULT, IisuLook().colours(dark = true).ring)
+        assertEquals(IisuLook.BRAND_CYAN, IisuLook().colours(dark = true).ring)
     }
 
-    @Test fun glass_cardsAreIisusVeil_followingItsGlass() {
-        val plain = IisuLook(glassOpacity = 0.45f).glass(dark = false).panel
-        assertEquals(0.13f, plain.alpha, 0.01f)                                     // iiSU's empty tile: 13 % black
-        assertEquals(0f, plain.red + plain.green + plain.blue, 0.01f)
-        assertEquals(0.26f, IisuLook(glassOpacity = 0.9f).glass(dark = true).panel.alpha, 0.01f)
-        val red = IisuLook(glassTint = 0xFFFF0000.toInt()).glass(dark = false).panel
-        assertEquals(1f, red.red, 0.01f)                                            // a full-strength tint colours the veil
+    @Test fun glass_boxesAreIisusVeil_theTintColoursTheBackground() {
+        // measured on iiSU's home: the empty tile is 13 % black whatever the opacity (45 % and 90 % gave the same pixels);
+        // custom glass colour #4D7CFE turned the background from #F5F5F5 to #E4E8F2 (about 10 %)
+        for (op in listOf(0.45f, 0.9f)) {
+            val v = IisuLook(glassOpacity = op).glass(dark = false).panel
+            assertEquals(0.13f, v.alpha, 0.01f); assertEquals(0f, v.red + v.green + v.blue, 0.01f)
+        }
+        val plain = IisuLook().glass(dark = false).base
+        val tinted = IisuLook(glassTint = 0xFF4D7CFE.toInt()).glass(dark = false).base
+        assertTrue("tinted toward blue", tinted.blue - tinted.red > plain.blue - plain.red + 0.05f)
+        assertTrue("lightly", tinted.red > 0.80f)
+        // switching the colour off keeps it with alpha 0 (seen on the Thor): no tint
+        assertEquals(plain, IisuLook(glassTint = 0x004D7CFE).glass(dark = false).base)
+    }
+
+    private fun varint(v: Long): ByteArray {
+        val out = java.io.ByteArrayOutputStream(); var x = v
+        while (true) { val b = (x and 0x7F).toInt(); x = x ushr 7; if (x == 0L) { out.write(b); break } else out.write(b or 0x80) }
+        return out.toByteArray()
+    }
+    private fun int(argb: Int) = byteArrayOf(0x18) + varint(argb.toLong())
+    private fun bool(b: Boolean) = byteArrayOf(0x08, if (b) 1 else 0)
+    private fun hue(argb: Int): Float {
+        val r = (argb shr 16 and 0xFF) / 255f; val g = (argb shr 8 and 0xFF) / 255f; val b = (argb and 0xFF) / 255f
+        val mx = maxOf(r, g, b); val d = mx - minOf(r, g, b)
+        val h = when (mx) { r -> ((g - b) / d) % 6; g -> (b - r) / d + 2; else -> (r - g) / d + 4 } * 60
+        return (h + 360) % 360
+    }
+
+    @Test fun parse_readsBothSelectionColours_andTheGradientSwitch() {
+        val look = IisuLookParser.parse(entry("focus_indicator_secondary_color_argb", int(0xFFFF8A6E.toInt())) +
+            entry("custom_selection_gradient_enabled", bool(false)))
+        assertEquals(0xFFFF8A6E.toInt(), look.focusSecondary)
+        assertEquals(false, look.customGradient)
+    }
+
+    @Test fun selection_customColours_goThroughTheHuesBetween() {
+        val teal = 0xFF3FA8B2.toInt()
+        val (from, mid, to) = IisuLook(focus = teal, focusSecondary = 0xFFC56EFF.toInt(), customGradient = true).selection()
+        assertEquals(teal, from); assertEquals(0xFFC56EFF.toInt(), to)
+        assertTrue("teal to violet passes by blue: ${hue(mid)}", hue(mid) in 220f..245f)
+        val (_, mid2, _) = IisuLook(focus = teal, focusSecondary = 0xFFFF8A6E.toInt(), customGradient = true).selection()
+        assertTrue("teal to salmon passes by green: ${hue(mid2)}", hue(mid2) in 80f..115f)
+    }
+
+    @Test fun selection_withoutCustomGradient_isIisusOwn() {
+        val (from, _, to) = IisuLook(focus = 0xFF3FA8B2.toInt(), focusSecondary = 0xFFFF8A6E.toInt(), customGradient = false).selection()
+        assertEquals(IisuLook.BRAND_CYAN, from); assertEquals(IisuLook.BRAND_VIOLET, to)
+        // iiSU removes the key when the switch is off (seen on the Thor): absent means off
+        val (from2, _, _) = IisuLook(focus = 0xFF3FA8B2.toInt(), customGradient = null).selection()
+        assertEquals(IisuLook.BRAND_CYAN, from2)
+    }
+
+    @Test fun parse_glassBlur_isTheHomeGlassMode() {
+        assertEquals(false, IisuLookParser.parse(entry("single_screen_home_glass_mode", str("Opaque"))).blur)
+        assertEquals(true, IisuLookParser.parse(entry("single_screen_home_glass_mode", str("Blurred"))).blur)
+        assertEquals(null, IisuLookParser.parse(entry("theme_mode", str("DARK"))).blur)   // absent: iiSU's default, blurred
+    }
+
+    @Test fun fontFamilyName_readsTheNameTable() {
+        assertEquals("Cal Sans", IisuFonts.familyName(java.io.File("src/main/res/font/cal_sans.ttf").readBytes()))
+        assertEquals(null, IisuFonts.familyName(ByteArray(40)))
     }
 
     @Test fun themeMode_followsIisu_orTheSystem() {

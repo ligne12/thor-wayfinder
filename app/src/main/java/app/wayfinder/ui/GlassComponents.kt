@@ -389,7 +389,7 @@ fun Modifier.focusIndicator(shape: Shape, inset: Boolean = false): Modifier = co
             val c = androidx.compose.ui.geometry.Offset(size.width / 2f, size.height / 2f)
             clipPath(androidx.compose.ui.graphics.Path().apply { addOutline(o) }) {
                 // strokes are centred on the edge: inside the clip only their inner half shows
-                drawOutline(o, Brush.linearGradient(listOf(g.accent2, g.accent, g.focusRing), c - d, c + d), alpha = halo, style = Stroke(band * 2))
+                drawOutline(o, Brush.linearGradient(g.ringStops.ifEmpty { listOf(g.accent2, g.accent, g.focusRing) }, c - d, c + d), alpha = halo, style = Stroke(band * 2))
                 // the tube's shading: white layered from the outer edge, about +35 % there and nothing at the inner edge
                 for ((k, w) in listOf(0.33f to 0.16f, 0.66f to 0.11f, 1f to 0.08f))
                     drawOutline(o, Color.White.copy(alpha = w), alpha = halo, style = Stroke(band * 2 * k))

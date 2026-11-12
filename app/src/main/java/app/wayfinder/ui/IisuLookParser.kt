@@ -15,6 +15,9 @@ object IisuLookParser {
         return IisuLook(
             dark = when (prefs["theme_mode"] as? String) { "DARK" -> true; "LIGHT" -> false; else -> null },
             focus = (prefs["focus_indicator_primary_color_argb"] as? Long)?.toInt(),
+            focusSecondary = (prefs["focus_indicator_secondary_color_argb"] as? Long)?.toInt(),
+            customGradient = prefs["custom_selection_gradient_enabled"] as? Boolean,
+            blur = when (prefs["single_screen_home_glass_mode"] as? String) { "Opaque" -> false; "Blurred" -> true; else -> null },
             glassOpacity = (prefs["home_glass_opacity"] as? Float)?.takeIf { it in 0f..1f },
             glassTint = (prefs["home_glass_tint_color_argb"] as? Long)?.toInt(),
             glassOutline = prefs["glass_outline_enabled"] as? Boolean,

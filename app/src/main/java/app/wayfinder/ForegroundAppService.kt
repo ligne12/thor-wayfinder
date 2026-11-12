@@ -2095,7 +2095,7 @@ class ForegroundAppService : AccessibilityService() {
         maybeRestoreLayoutAtBoot()
         // Probe privileged backends so they're ready even if the UI was never opened
         PServiceBridge.probeAsync()
-        app.wayfinder.ui.IisuLookSource.refreshAsync()   // iiSU fork
+        app.wayfinder.ui.IisuLookSource.refreshAsync(this)   // iiSU fork
         RootHelper.probeAsync()
         // Global raw-input monitor (root evdev) → touch-idle, gestures, chords
         PadLayerCtl.init(this)

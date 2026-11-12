@@ -103,7 +103,7 @@ class MainActivity : ComponentActivity() {
         // Volume keys here = the media volume (else Android picks the ring volume when nothing plays).
         volumeControlStream = android.media.AudioManager.STREAM_MUSIC
         AppSettings.init(this)
-        app.wayfinder.ui.IisuLookSource.refreshAsync()   // iiSU fork
+        app.wayfinder.ui.IisuLookSource.refreshAsync(this)   // iiSU fork
         // Every settings store the UI touches: the service may not be running yet (a fresh
         // install, or the user turned it off) — opening a page must never depend on it.
         LinkedVolume.init(this); SpeakerTune.init(this); SleepSettings.init(this); Layouts.init(this)

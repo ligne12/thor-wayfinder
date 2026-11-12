@@ -317,7 +317,7 @@ object AppSettings {
     fun customColours(): app.wayfinder.ui.CustomColours? =
         if (!customColors) null else app.wayfinder.ui.CustomColours(customBg, customCard, customText, customAccent)
     /** No glass: Black, or your own colours. */
-    val flatLook: Boolean get() = false   // iiSU fork: always glass; the look comes from iiSU (ui/IisuLook.kt)
+    val flatLook: Boolean get() = app.wayfinder.ui.IisuLookSource.current.blur == false   // iiSU fork: iiSU's Glass Blur
 
     /** 3-finger gesture on the bottom screen blanks/wakes it (on the fly). */
     var gestureBlankMode by mutableStateOf(BlankGesture.TAP)

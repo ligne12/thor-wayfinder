@@ -92,12 +92,14 @@ data class GlassColors(
     val optionWell: Color,         // an unselected option's opaque base under its glass
     // build 18 (A23)
     val positive: Color,           // what went right ("All set", "working ✓"): a green that reads on the card
+    // iiSU fork: the focus ring's gradient (iiSU's selection colours); empty: accent2, accent, focusRing
+    val ringStops: List<Color> = emptyList(),
 )
 
 // dev build 17 (WP8): the derived tokens — they only follow light / dark ("Your own colours" sets [GlassColors.dark] from its
 // background, so they follow it too)
 /** iiSU fork: iiSU's accent gradient — sky, blue, violet (its switch track, measured). Every accent fill draws with it. */
-val GlassColors.accentStops: List<Color> get() = listOf(Color(IisuLook.SKY), accent, accent2)
+val GlassColors.accentStops: List<Color> get() = listOf(Color(IisuLook.SKY), Color(IisuLook.ACCENT), accent2)   // fixed in iiSU
 /** The dim behind popups and sheets. */
 val GlassColors.modalDim: Color get() = Color(TokenArgb.MODAL_DIM)
 /** Keyboard overlay and input deck base. */
@@ -139,9 +141,9 @@ private val CalSans = androidx.compose.ui.text.font.FontFamily(
     listOf(FontWeight.Normal, FontWeight.Medium, FontWeight.SemiBold, FontWeight.Bold, FontWeight.ExtraBold, FontWeight.Black)
         .map { androidx.compose.ui.text.font.Font(app.wayfinder.R.font.cal_sans, it) })
 
-private val GlassType = Typography().let { t ->
-    // iiSU fork: Cal Sans on every style, like iiSU
-    fun androidx.compose.ui.text.TextStyle.cal() = copy(fontFamily = CalSans)
+/** iiSU fork: every style in iiSU's font ([family]: Cal Sans unless iiSU's Style › Font picks another). */
+private fun glassType(family: androidx.compose.ui.text.font.FontFamily) = Typography().let { t ->
+    fun androidx.compose.ui.text.TextStyle.cal() = copy(fontFamily = family)
     Typography(
         displayLarge = t.displayLarge.cal(), displayMedium = t.displayMedium.cal(), displaySmall = t.displaySmall.cal(),
         headlineLarge = t.headlineLarge.cal(), headlineSmall = t.headlineSmall.cal(),
@@ -316,6 +318,7 @@ fun ThorGlassTheme(dark: Boolean, content: @Composable () -> Unit) {
         lightColorScheme(primary = colors.accent, background = colors.base, surface = Color(0xFFEAF0FF))
 
     CompositionLocalProvider(LocalGlass provides colors) {
-        MaterialTheme(colorScheme = scheme, typography = GlassType, content = content)
+        val family = IisuLookSource.fontFamily ?: CalSans
+        MaterialTheme(colorScheme = scheme, typography = androidx.compose.runtime.remember(family) { glassType(family) }, content = content)
     }
 }
