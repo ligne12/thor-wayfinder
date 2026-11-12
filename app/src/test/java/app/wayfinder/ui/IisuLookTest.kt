@@ -48,6 +48,13 @@ class IisuLookTest {
         assertEquals(IisuLook(font = "cal_sans"), look)
     }
 
+    @Test fun glassTint_alphaIsItsStrength() {
+        fun rgb(look: IisuLook) = look.colours(dark = false).card and 0x00FFFFFF
+        assertEquals(0xFFFFFF, rgb(IisuLook(glassTint = 0x004D7CFE)))                 // strength 0: iiSU's untinted glass
+        assertEquals(0x4D7CFE, rgb(IisuLook(glassTint = 0xFF4D7CFE.toInt())))         // full strength
+        assertEquals(0xFFFFFF, rgb(IisuLook()))
+    }
+
     @Test fun themeMode_followsIisu_orTheSystem() {
         assertEquals(ThemeMode.DARK, IisuLook(dark = true).themeMode())
         assertEquals(ThemeMode.LIGHT, IisuLook(dark = false).themeMode())
