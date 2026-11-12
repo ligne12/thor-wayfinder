@@ -59,7 +59,11 @@ import app.wayfinder.ui.GlassTokens
 import app.wayfinder.ui.IisuToggleTile
 import app.wayfinder.ui.LocalGlass
 import app.wayfinder.ui.ThorGlassTheme
+import app.wayfinder.ui.focusIndicator
 import app.wayfinder.ui.glassSurface
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.type
 import app.wayfinder.ui.menuCard
 
 /**
@@ -78,6 +82,8 @@ object NotificationCenter {
     private var owner: app.wayfinder.keyboard.ComposeOwner? = null
     private var shown by mutableStateOf(false)   // the sheet in (true) or sliding out (false: the window goes once it is out)
     private var tick by mutableIntStateOf(0)    // the tiles read again (a switch writes through root, a moment later)
+    private var clearArmed by mutableStateOf(false)   // the controller's first Select: "Clear notifications" asks for the second
+    private var clearAt = 0L
 
     val isOpen: Boolean get() = view != null
 
@@ -91,13 +97,26 @@ object NotificationCenter {
         app.wayfinder.ui.IisuLookSource.refreshAsync(service)
         val owner = app.wayfinder.keyboard.ComposeOwner()
         val root = object : android.widget.FrameLayout(ctx) {
+            // as the quick panel's root: the stick / D-pad move the focus, R3 / L3 / Start never "click"
+            private val nav = app.wayfinder.ui.PadNav({ getChildAt(0) }, { dispatchKeyEvent(it) })
+            private val padFallback = app.wayfinder.ui.PadFallbackFilter()
             override fun dispatchKeyEvent(event: KeyEvent): Boolean {
                 if (event.keyCode == KeyEvent.KEYCODE_BACK || event.keyCode == KeyEvent.KEYCODE_BUTTON_B) {
                     if (event.action == KeyEvent.ACTION_UP && !event.isCanceled) close()
                     return true
                 }
+                if (event.keyCode == KeyEvent.KEYCODE_BUTTON_MODE) return true
+                // Select twice within 2.5 s: clear them all (the first says so on the button)
+                if (event.keyCode == KeyEvent.KEYCODE_BUTTON_SELECT) {
+                    if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) selectPressed()
+                    return true
+                }
+                if (padFallback.shouldDrop(event)) return true
                 return super.dispatchKeyEvent(event)
             }
+            override fun dispatchGenericMotionEvent(ev: android.view.MotionEvent): Boolean = nav.onMotion(ev) || super.dispatchGenericMotionEvent(ev)
+            override fun onWindowFocusChanged(hasWindowFocus: Boolean) { super.onWindowFocusChanged(hasWindowFocus); if (!hasWindowFocus) nav.stop() }
+            override fun onDetachedFromWindow() { nav.stop(); super.onDetachedFromWindow() }
         }
         owner.attach(root)
         root.addView(androidx.compose.ui.platform.ComposeView(ctx).apply {
@@ -130,6 +149,13 @@ object NotificationCenter {
         }
     }
 
+    private fun selectPressed() {
+        val now = android.os.SystemClock.uptimeMillis()
+        if (clearArmed && now - clearAt <= 2500) { clearArmed = false; NotificationsListener.clearAll(); return }
+        clearArmed = true; clearAt = now
+        main.postDelayed({ if (android.os.SystemClock.uptimeMillis() - clearAt >= 2500) clearArmed = false }, 2500)
+    }
+
     /** Slides the sheet out; the window goes once it is out. */
     fun close() { if (view != null) shown = false }
 
@@ -138,7 +164,8 @@ object NotificationCenter {
         view = null
         runCatching { wm?.removeViewImmediate(v) }
         owner?.destroy()
-        wm = null; owner = null; shown = false
+        wm = null; owner = null; shown = false; clearArmed = false
+        ForegroundAppService.notificationCenterClosed()   // the controller back where it was
     }
 
     @Composable
@@ -189,8 +216,9 @@ object NotificationCenter {
             item {
                 Row(Modifier.fillMaxWidth().padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text("Notifications", color = g.textPrimary, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
-                    GlassButton("Clear notifications", { NotificationsListener.clearAll() }, icon = Icons.Rounded.DeleteSweep,
-                        enabled = NotificationModel.anyClearable(items))
+                    GlassButton(if (clearArmed) "Select again: clear all" else "Clear notifications", { NotificationsListener.clearAll() },
+                        icon = Icons.Rounded.DeleteSweep, enabled = NotificationModel.anyClearable(items),
+                        kind = if (clearArmed) app.wayfinder.ui.ButtonKind.DANGER else app.wayfinder.ui.ButtonKind.NORMAL)
                 }
             }
             if (items.isEmpty()) item {
@@ -214,7 +242,7 @@ object NotificationCenter {
     private fun Card(ctx: Context, n: NotifItem) {
         val g = LocalGlass.current
         val pm = ctx.packageManager
-        val app = remember(n.pkg) { runCatching { pm.getApplicationLabel(pm.getApplicationInfo(n.pkg, 0)).toString() }.getOrDefault(n.pkg) }
+        val appName = remember(n.pkg) { runCatching { pm.getApplicationLabel(pm.getApplicationInfo(n.pkg, 0)).toString() }.getOrDefault(n.pkg) }
         val icon = remember(n.pkg) { runCatching { pm.getApplicationIcon(n.pkg).toBitmap(96, 96).asImageBitmap() }.getOrNull() }
         val now = System.currentTimeMillis()
         // under a minute: Android's own "now" (its shade's word, in the system's language), not "0 minutes ago"
@@ -222,10 +250,20 @@ object NotificationCenter {
             else DateUtils.getRelativeTimeSpanString(n.postTime, now, DateUtils.MINUTE_IN_MILLIS).toString()
         var slide by remember { mutableFloatStateOf(0f) }
         val shape = RoundedCornerShape(20.dp)
+        val gate = remember { app.wayfinder.ui.ReleaseGate() }
+        val open = { NotificationsListener.open(n.key); close() }
         Column(Modifier.fillMaxWidth()
             .graphicsLayer { translationX = slide; alpha = 1f - (kotlin.math.abs(slide) / size.width).coerceIn(0f, 1f) }
+            .focusIndicator(shape)
+            // the controller: A opens (on its release), X clears it (an ongoing one stays)
+            .onKeyEvent { e ->
+                if (e.key == androidx.compose.ui.input.key.Key.ButtonX) {
+                    if (e.type == androidx.compose.ui.input.key.KeyEventType.KeyDown && n.clearable) NotificationsListener.dismiss(n.key)
+                    true
+                } else gate.onKey(e, open)
+            }
             .glassSurface(g, shape, well = g.surfaceModal, veil = false)
-            .clickable { NotificationsListener.open(n.key); close() }
+            .clickable { open() }
             .then(if (!n.clearable) Modifier else Modifier.pointerInput(n.key) {
                 // swiped aside past 30 % of its width: cleared (an ongoing one doesn't move)
                 detectHorizontalDragGestures(onDragEnd = { if (kotlin.math.abs(slide) > size.width * 0.3f) NotificationsListener.dismiss(n.key); slide = 0f },
@@ -237,7 +275,7 @@ object NotificationCenter {
                 else Box(Modifier.size(48.dp).clip(CircleShape).background(g.textTertiary.copy(alpha = 0.15f)))
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(app, color = g.textPrimary, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, maxLines = 1,
+                        Text(appName, color = g.textPrimary, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, maxLines = 1,
                             overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
                         Text(age, color = g.textSecondary, style = MaterialTheme.typography.bodySmall, maxLines = 1)
                     }

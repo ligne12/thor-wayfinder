@@ -122,6 +122,8 @@ class ForegroundAppService : AccessibilityService() {
         fun accessibility(): android.accessibilityservice.AccessibilityService? = instance
         /** iiSU fork: the Hub's "Notification center" switch changed — block Android's shade and take the swipe, or give it back. */
         fun notificationCenterChanged() { instance?.let { s -> s.handler.post { s.applyNotificationCenter() } } }
+        /** iiSU fork: the notification center went — the controller back where it was. */
+        fun notificationCenterClosed() { instance?.let { s -> s.handler.post { s.onNotificationCenterClosed() } } }
         /** iiSU fork: the screen that isn't [display] (the multitask's "move to the other screen"); null: none, or no service. */
         fun otherScreen(display: Int): Int? = instance?.let { if (display == PRIMARY_DISPLAY) it.secondDisplayId() else PRIMARY_DISPLAY }
         fun setScreenMode(mode: Int) { instance?.let { it.handler.post { it.applyScreenMode(mode) } } }
@@ -256,6 +258,7 @@ class ForegroundAppService : AccessibilityService() {
                 ThorAction.CLEAR_BACKGROUND -> svc.startClearInBackground()
                 ThorAction.CLOSE_APP -> { svc.handler.post { svc.closeCurrentApp() }; true }
                 ThorAction.RECENTS -> { svc.handler.post { svc.openRecents() }; true }
+                ThorAction.NOTIFICATIONS -> { svc.handler.post { svc.openNotificationCenter() }; true }   // iiSU fork
                 // 1.4 (GitHub #43): on the controller copy when the input layer runs — the game's own Back. dev build 17 (theme
                 // G): a connected controller's on its own pad
                 ThorAction.BACK -> { svc.handler.post { if (svc.buttonEngine?.pressBackOnPad(src) != true) svc.performGlobalAction(GLOBAL_ACTION_BACK) }; true }
@@ -926,11 +929,28 @@ class ForegroundAppService : AccessibilityService() {
         }
     }
 
+    /** iiSU fork: where the controller was when the notification center opened (it goes back there when it closes). */
+    private var notifReturnTo: Int? = null
+
+    /** iiSU fork: the notification center, with the controller on its screen (the top one) while it is open. */
+    private fun openNotificationCenter() {
+        if (NotificationCenter.isOpen || !NotificationCenter.show(this)) return
+        val from = controllerDisplay()
+        notifReturnTo = from
+        if (from != PRIMARY_DISPLAY) focusDisplay(PRIMARY_DISPLAY) { syncFocusModel() }
+    }
+
+    private fun onNotificationCenterClosed() {
+        val back = notifReturnTo ?: return
+        notifReturnTo = null
+        if (back != PRIMARY_DISPLAY && screenOn) handler.postDelayed({ focusDisplay(back) { syncFocusModel() } }, 150)
+    }
+
     /** iiSU fork: the notification center on (Features): Android's shade blocked, the top strip takes the swipe; off: Android's. */
     private fun applyNotificationCenter() {
         if (Features.notifications) {
             NotificationsListener.ensureAccess(this)
-            NotificationGesture.start(this) { NotificationCenter.show(this) }
+            NotificationGesture.start(this) { openNotificationCenter() }
         } else NotificationGesture.stop(this)
     }
 

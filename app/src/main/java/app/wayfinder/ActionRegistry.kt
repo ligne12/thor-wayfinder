@@ -14,6 +14,8 @@ enum class ThorAction(val title: String, val description: String) {
     /** 1.1: close the game without Android's multitask view (it broke the handheld feel). */
     CLOSE_APP("Close this app", "Closes the app on the screen that has the controller, and goes home there"),
     RECENTS("Recent apps", "Open the multitask view"),
+    /** iiSU fork: the notification center (also a pull down from the top). */
+    NOTIFICATIONS("Notifications", "Open the notification center"),
     BACK("Back", "Android's normal Back"),
     // Wired in later phases; present now so bindings/UI can reference them.
     SCREENSHOT("Screenshot", "Capture the top, bottom or both screens (pick which in ${Say.path(NavCards.SCREENSHOTS)})"),

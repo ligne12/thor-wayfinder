@@ -17,6 +17,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
@@ -41,8 +42,10 @@ fun IisuToggleTile(icon: ImageVector, label: String, on: Boolean, modifier: Modi
                    description: String = label, onClick: () -> Unit) {
     val g = LocalGlass.current
     val tile = RoundedCornerShape(16.dp)
+    val gate = androidx.compose.runtime.remember { ReleaseGate() }
     Column(modifier.height(height)
         .focusIndicator(tile)
+        .onKeyEvent { gate.onKey(it, onClick) }
         .then(if (on) Modifier.clip(tile).background(Brush.linearGradient(g.accentStops), tile)
               else Modifier.glassSurface(g, tile, well = g.surfaceModal, veil = false))
         .clickable(onClick = onClick)

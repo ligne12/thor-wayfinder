@@ -16,6 +16,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.ScreenRotation
+import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.Apps
 import androidx.compose.material.icons.rounded.SwipeUp
 import androidx.compose.material.icons.rounded.SwipeDown
@@ -734,6 +735,7 @@ fun actionIcon(a: ThorAction): ImageVector = when (a) {
     // build 18 (A22): never a × — a blue × beside PlayStation's marks read as ✕, the confirm button
     ThorAction.CLOSE_APP -> Icons.Rounded.CancelPresentation
     ThorAction.RECENTS -> Icons.Rounded.GridView
+    ThorAction.NOTIFICATIONS -> Icons.Rounded.Notifications   // iiSU fork
     ThorAction.BACK -> Icons.AutoMirrored.Rounded.ArrowBack
     ThorAction.SCREENSHOT -> Icons.Rounded.PhotoCamera
     ThorAction.TOGGLE_SECOND_SCREEN -> Icons.Rounded.DarkMode

@@ -359,7 +359,7 @@ internal fun comboAfterEdit(edited: ThorAction, before: List<ThorAction>, now: L
 
 /** 1.4 (GitHub #51): the actions in groups — the ones already on a combo say which. */
 private val COMBO_GROUPS: List<Pair<String, List<ThorAction>>> = listOf(
-    "Screens & apps" to listOf(ThorAction.SWAP_OR_SEND, ThorAction.RECENTS, ThorAction.CLEAR_BACKGROUND, ThorAction.CLOSE_APP,
+    "Screens & apps" to listOf(ThorAction.SWAP_OR_SEND, ThorAction.RECENTS, ThorAction.NOTIFICATIONS, ThorAction.CLEAR_BACKGROUND, ThorAction.CLOSE_APP,
         ThorAction.CLOSE_OTHER, ThorAction.HOME_HERE, ThorAction.HOME_TOP, ThorAction.HOME_BOTTOM, ThorAction.HOME_BOTH,
         ThorAction.TOGGLE_SECOND_SCREEN, ThorAction.TOGGLE_TOP_SCREEN, ThorAction.BACK, ThorAction.NOTHING),
     "Controller" to listOf(ThorAction.FOCUS_SWITCH_UP, ThorAction.FOCUS_SWITCH_DOWN, ThorAction.FOCUS_LOCK_TOGGLE,
