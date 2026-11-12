@@ -109,4 +109,7 @@ dependencies {
 
     // Reflection access to hidden APIs (IActivityTaskManager.moveRootTaskToDisplay)
     implementation("org.lsposed.hiddenapibypass:hiddenapibypass:4.3")
+
+    // iiSU fork: the one unit test (ui/IisuLookTest)
+    testImplementation("junit:junit:4.13.2")
 }

@@ -26,7 +26,8 @@ internal object TokenArgb {
         card?.let { (it and 0x00FFFFFFL) or 0x99000000 } ?: if (dark) 0x9E1B1E26 else 0x80FFFFFF
 
     /** Text and marks on an accent fill: white, or near-black on a light accent ("Your own colours"). */
-    fun onAccent(accent: Long): Long = if (luminance(accent) > 0.5) 0xFF0A0C14 else 0xFFFFFFFF
+    // iiSU fork: the ink that contrasts more — white on a mid-tone accent (iiSU's teal #699CA1) read at 3 : 1.
+    fun onAccent(accent: Long): Long = if (contrast(0xFF0A0C14, accent) >= contrast(0xFFFFFFFF, accent)) 0xFF0A0C14 else 0xFFFFFFFF
 
     /** Build 18 (A1): how far the light theme's focus ring is darkened from the accent toward #0A0C14 — 0.75 reads at 3 : 1
      *  against the accent and against the selected fill's accent → accent2 middle (the spec's 0.45 gave 2.3 : 1; TokensTest). */

@@ -139,6 +139,7 @@ object QuickPanelWindow {
         AppConfigStore.init(ctx); ControlsStore.init(ctx)
         // what performance / fan / Hz were before any change here: the user's usual ones for
         // "Keep for <game>" (unless an override already recorded them)
+        app.wayfinder.ui.IisuLookSource.refreshAsync()   // iiSU fork: not awaited — the panel opens with the last look
         PanelShortcuts.startPanel(ForegroundAppService.panelApp())
         PanelCards.load(ctx)
         val cr = ctx.contentResolver

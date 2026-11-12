@@ -28,9 +28,42 @@ data class IisuLook(
             outline = glassOutline ?: true,
         )
     }
+
+    /** Wayfinder's theme setting for this look: iiSU's light or dark, else the system's. */
+    fun themeMode(): app.wayfinder.ThemeMode = when (dark) {
+        true -> app.wayfinder.ThemeMode.DARK; false -> app.wayfinder.ThemeMode.LIGHT; null -> app.wayfinder.ThemeMode.SYSTEM
+    }
 }
 
 /** The last look read from iiSU; [IisuLook] defaults until then. Compose state: an open window follows a new read. */
 object IisuLookSource {
     var current by mutableStateOf(IisuLook())
+        private set
+
+    private const val FILE = "/data/data/com.iisulauncher/files/datastore/launcher_settings.preferences_pb"
+    private val busy = java.util.concurrent.atomic.AtomicBoolean(false)
+    @Volatile private var lastStamp = ""
+
+    /**
+     * Re-reads iiSU's settings if the file changed, off the main thread ([app.wayfinder.PServiceBridge.exec] blocks), read
+     * only. Nothing readable (no root service, no file, not a preferences file): the last look stays.
+     */
+    fun refreshAsync() {
+        if (!busy.compareAndSet(false, true)) return
+        Thread {
+            try {
+                if (!app.wayfinder.PServiceBridge.isAvailable()) return@Thread
+                val stamp = app.wayfinder.PServiceBridge.exec("stat -c %Y-%s $FILE")?.trim().orEmpty()
+                if (stamp.isEmpty() || stamp == lastStamp) return@Thread
+                val b64 = app.wayfinder.PServiceBridge.exec("base64 $FILE") ?: return@Thread
+                val bytes = runCatching { java.util.Base64.getMimeDecoder().decode(b64.trim()) }.getOrNull() ?: return@Thread
+                val look = IisuLookParser.parseOrNull(bytes) ?: return@Thread
+                lastStamp = stamp
+                android.os.Handler(android.os.Looper.getMainLooper()).post {
+                    current = look
+                    app.wayfinder.AppSettings.setMode(look.themeMode())
+                }
+            } finally { busy.set(false) }
+        }.apply { isDaemon = true; name = "iisu-look" }.start()
+    }
 }
