@@ -118,6 +118,8 @@ class ForegroundAppService : AccessibilityService() {
         fun screenMode(): Int = instance?.currentScreenMode() ?: 0
         /** The screen the controller works right now (null: service not running). */
         fun controllerScreen(): Int? = instance?.controllerDisplay()
+        /** iiSU fork: the running service, for windows only it may add ([VolumeBar]); null when it isn't running. */
+        fun accessibility(): android.accessibilityservice.AccessibilityService? = instance
         fun setScreenMode(mode: Int) { instance?.let { it.handler.post { it.applyScreenMode(mode) } } }
         /** QA2: bring a dark bottom screen back, whatever made it dark (Help → Fix). */
         fun repairBottomScreen() { instance?.repairBottom() }
@@ -3513,6 +3515,7 @@ class ForegroundAppService : AccessibilityService() {
         if (aynButtonKey(event)) return true
         // An open Thor Keyboard owns the whole pad (nothing leaks to the app).
         if (app.wayfinder.keyboard.ThorKeyboardService.instance?.captureKey(event) == true) return true
+        if (VolumeBar.onVolumeKey(this, event, controllerDisplay())) return true   // iiSU fork: Wayfinder's volume bar
         if (recentsKey(event)) return true
         return buttonEngine?.onKey(event) ?: false
     }

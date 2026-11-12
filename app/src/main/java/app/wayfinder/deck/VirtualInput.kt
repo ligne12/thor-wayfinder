@@ -1,7 +1,6 @@
 package app.wayfinder.deck
 
 import android.content.Context
-import android.media.AudioManager
 import android.view.KeyCharacterMap
 import android.view.KeyEvent
 import app.wayfinder.InputMonitor
@@ -59,10 +58,8 @@ object VirtualInput {
     fun releaseMouse() = InputMonitor.send("R")
 
     // ── volume / brightness (no key injection needed) ─────────────────────
-    fun volume(ctx: Context, direction: Int) {
-        ctx.getSystemService(AudioManager::class.java).adjustStreamVolume(
-            AudioManager.STREAM_MUSIC, direction, AudioManager.FLAG_SHOW_UI)
-    }
+    fun volume(ctx: Context, direction: Int) =   // iiSU fork: Wayfinder's volume bar, as the volume keys
+        app.wayfinder.VolumeBar.adjust(ctx, direction, app.wayfinder.ForegroundAppService.controllerScreen() ?: 0)
 
     /**
      * Per-screen brightness, one eye-scale step — the same per-display control as the
