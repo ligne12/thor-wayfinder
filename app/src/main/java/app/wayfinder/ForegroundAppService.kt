@@ -1965,6 +1965,7 @@ class ForegroundAppService : AccessibilityService() {
             addAll(launcherPackages)
             add(packageName)
             addAll(displayApps.values)   // apps currently shown on the two screens
+            addAll(AppSettings.recentsLocked)   // iiSU fork: the multitask's padlocks
         }
         val csv = keep.joinToString(",")
         Log.d(TAG, "Clear keep=[$csv] (${csv.length} chars)")

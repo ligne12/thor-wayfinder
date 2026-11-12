@@ -17,4 +17,15 @@ object RecentsModel {
         val id = f[0].toIntOrNull(); val d = f[2].toIntOrNull(); val at = f[3].toLongOrNull(); val type = f[4].toIntOrNull()
         if (id == null || d == null || at == null || (type != 1 && type != -1)) null else RecentTask(id, f[1], d, at)
     }
+
+    /** The carousel's order, Android's: the oldest on the left. */
+    fun order(tasks: List<RecentTask>): List<RecentTask> = tasks.sortedWith(compareBy({ it.lastActive }, { it.taskId }))
+
+    /** The card chosen first: the newest of the app left ([origin]), else the newest card; -1 with no card. */
+    fun initial(ordered: List<RecentTask>, origin: String?): Int =
+        ordered.indexOfLast { it.pkg == origin }.takeIf { it >= 0 } ?: ordered.lastIndex
+
+    /** What "Clear all" keeps: the locked apps, the app shown on the other screen, and [always] (the homes, Wayfinder). */
+    fun clearKeep(locked: Set<String>, otherScreenApp: String?, always: Set<String>): Set<String> =
+        locked + always + listOfNotNull(otherScreenApp)
 }

@@ -180,6 +180,14 @@ object AppSettings {
         if (::prefs.isInitialized) prefs.edit().putInt("recents_hint", recentsHint).putInt("recents_hint_at", recentsHintAt).apply()
     }
 
+    /** iiSU fork: the multitask's padlocks — apps "Clear all" and "Close apps" leave open. */
+    var recentsLocked by mutableStateOf<Set<String>>(emptySet())
+        private set
+    fun toggleRecentsLock(pkg: String) {
+        recentsLocked = if (pkg in recentsLocked) recentsLocked - pkg else recentsLocked + pkg
+        if (::prefs.isInitialized) prefs.edit().putStringSet("recents_locked", recentsLocked).apply()
+    }
+
     /** 1.3 — what a tap on the AYN button does (the quick panel unless changed). */
     var aynTap by mutableStateOf(ThorAction.QUICK_MENU)
         private set
@@ -353,6 +361,7 @@ object AppSettings {
         fpsCorner = prefs.getInt("fps_corner", 0)
         recentsHint = prefs.getInt("recents_hint", 0).coerceIn(0, 2)
         recentsHintAt = prefs.getInt("recents_hint_at", 0).coerceIn(0, 4)
+        recentsLocked = prefs.getStringSet("recents_locked", null)?.toSet().orEmpty()   // a copy: the returned set must not be kept
         fpsLevel = prefs.getInt("fps_level", 0).coerceIn(0, 2)
         fpsSize = prefs.getInt("fps_size", 1).coerceIn(0, 2)
         fpsCompact = prefs.getBoolean("fps_compact", false)
