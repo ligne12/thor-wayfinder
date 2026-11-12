@@ -400,7 +400,7 @@ private fun HubHome(myDisplayId: Int, go: (String) -> Unit) {
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
-                        Icon(Icons.Rounded.Search, null, tint = g.accent, modifier = Modifier.size(20.dp))
+                        Icon(Icons.Rounded.Search, null, tint = g.textPrimary, modifier = Modifier.size(20.dp))
                         Text(if (androidx.compose.ui.platform.LocalDensity.current.fontScale <= 1.05f) "Search settings & features" else "Search",
                             color = g.textTertiary, style = MaterialTheme.typography.bodyLarge,
                             maxLines = 1, softWrap = false)
@@ -488,7 +488,7 @@ private fun MenuCard(title: String, summary: String, icon: ImageVector, modifier
     // page (Back from it comes back here)
     FocusableGlass(onClick = onClick, modifier = modifier.height(126.dp), radius = Radii.Large, focusRequester = focus, focusId = id) {
         Column(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.SpaceBetween) {
-            Icon(icon, null, tint = g.accent, modifier = Modifier.size(30.dp))
+            Icon(icon, null, tint = g.textPrimary, modifier = Modifier.size(30.dp))
             Column {
                 Text(title, color = g.textPrimary, style = MaterialTheme.typography.titleLarge)
                 // build 18 (B5, D10 / hF19): two lines (one cut "Brightness · bottom screen · co…")
@@ -594,7 +594,7 @@ private fun StatusStrip(myDisplayId: Int) {
 private fun StripCell(label: String, value: String, modifier: Modifier, dot: androidx.compose.ui.graphics.Color? = null) {
     val g = LocalGlass.current
     Column(modifier.padding(horizontal = 8.dp)) {
-        Text(label.uppercase(), color = g.textTertiary, style = MaterialTheme.typography.labelSmall, maxLines = 1)
+        Text(label, color = g.textTertiary, style = MaterialTheme.typography.labelMedium, maxLines = 1)   // iiSU fork: no capitals
         Row(verticalAlignment = Alignment.CenterVertically) {
             if (dot != null) Box(Modifier.padding(end = 6.dp).size(8.dp).clip(CircleShape).background(dot))
             Text(value, color = g.textPrimary, style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -1599,7 +1599,7 @@ private fun StatusRow(label: String, value: String, ok: Boolean?, icon: ImageVec
     FocusableGlass(onClick = onClick, modifier = modifier.fillMaxWidth(), radius = Radii.Row, focusId = id) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Icon(icon, null, tint = g.accent, modifier = Modifier.size(22.dp))
+            Icon(icon, null, tint = g.textPrimary, modifier = Modifier.size(22.dp))
             Text(label, color = g.textPrimary, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
             Text(value, color = when (ok) { true -> g.positive; false -> g.warn; null -> g.textSecondary },
                 style = MaterialTheme.typography.bodyMedium)
@@ -1970,7 +1970,7 @@ private fun FeaturesPage(myDisplayId: Int, onBack: () -> Unit, go: (String) -> U
         GlassPanel(Modifier.fillMaxWidth(), radius = Radii.Row) {
             Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Icon(Icons.Rounded.SwapVert, null, tint = g.accent, modifier = Modifier.size(22.dp))
+                Icon(Icons.Rounded.SwapVert, null, tint = g.textPrimary, modifier = Modifier.size(22.dp))
                 Column(Modifier.weight(1f)) {
                     Text("Screen switching", color = g.textPrimary, style = MaterialTheme.typography.bodyLarge)
                     Caption("Move and swap apps · Recents · Home on each screen · the controller between screens · app pairs")
@@ -2140,7 +2140,7 @@ private fun SearchField(q: String, onChange: (String) -> Unit, typing: Boolean, 
             surface = Modifier.glassSurface(g, shape, raised = true), shape = shape,
             contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 52.dp, end = 18.dp, top = 15.dp, bottom = 15.dp),
             startEditing = typing, imeAction = androidx.compose.ui.text.input.ImeAction.Search, onSubmit = onSubmit, gateFocus = gate)
-        Icon(Icons.Rounded.Search, null, tint = g.accent, modifier = Modifier.align(Alignment.CenterStart).padding(start = 18.dp).size(22.dp))
+        Icon(Icons.Rounded.Search, null, tint = g.textPrimary, modifier = Modifier.align(Alignment.CenterStart).padding(start = 18.dp).size(22.dp))
     }
 }
 
