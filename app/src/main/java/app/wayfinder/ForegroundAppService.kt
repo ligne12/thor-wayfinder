@@ -1294,6 +1294,8 @@ class ForegroundAppService : AccessibilityService() {
             return
         }
         recentsClearAt = now
+        // iiSU fork: over the multitask its own "Clear all" asks (no Wayfinder pill on it)
+        if (recentsCovered()) { RecentsScreen.armClearAll(ClearAll.MS); return }
         val look = ButtonNames.lookOfSrc(ExtPadsCtl.srcOfDevice(event.device))
         Overlays.release(Held.RECENTS)
         Overlays.pill("Press ${Say.btn(ThorButton.SELECT, look)} again to close all apps", CueOrigin.Screen(d), group = "recents-clear-all")

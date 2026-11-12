@@ -95,7 +95,8 @@ object RecentsScreen {
         private set
     private var selectedId by mutableIntStateOf(-1)
     private var removed by mutableStateOf<Set<Int>>(emptySet())   // closed cards, gone at once (before the list is read again)
-    private var leaving = false   // an app or the home is on its way: the cover waits for Recents to go (see [leaveVia])
+    private var leaving = false
+    private var clearArmed by mutableStateOf(false)   // the controller's first Select: "Clear all" asks for the second   // an app or the home is on its way: the cover waits for Recents to go (see [leaveVia])
 
     private val cards: List<RecentTask> get() = RecentsModel.order(RecentsSource.tasks.orEmpty()).filter { it.taskId !in removed }
     private fun selected(): RecentTask? = cards.firstOrNull { it.taskId == selectedId }
@@ -240,6 +241,12 @@ object RecentsScreen {
         if (rest.isEmpty()) leaveVia { PServiceBridge.goHomeOnDisplay(here) }   // the last card: its home
     }
 
+    /** The controller's first Select of "close all": the button says the second one closes them, for [ms]. */
+    fun armClearAll(ms: Long) {
+        clearArmed = true
+        main.postDelayed({ clearArmed = false }, ms)
+    }
+
     fun clearAll() {
         val s = service ?: return
         val here = shownOn ?: return
@@ -321,7 +328,8 @@ object RecentsScreen {
                     Row(horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
                         Text(ram, color = LocalGlass.current.textSecondary, style = MaterialTheme.typography.labelLarge)
                         GlassButton("Screenshot", { screenshot() })
-                        GlassButton("Clear all", { clearAll() })
+                        GlassButton(if (clearArmed) "Select again: clear all" else "Clear all", { clearAll() },
+                            kind = if (clearArmed) app.wayfinder.ui.ButtonKind.DANGER else app.wayfinder.ui.ButtonKind.NORMAL)
                     }
                 }
             }
