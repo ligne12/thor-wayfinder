@@ -128,16 +128,25 @@ val LocalGlass = staticCompositionLocalOf<GlassColors> { error("GlassColors not 
  */
 val LocalRealGlass = androidx.compose.runtime.compositionLocalOf { false }
 
-/** iiSU fork: iiSU's font for titles and labels; small text stays the system's. */
+/** iiSU fork: iiSU's font. */
 private val CalSans = androidx.compose.ui.text.font.FontFamily(androidx.compose.ui.text.font.Font(app.wayfinder.R.font.cal_sans))
 
-private val GlassType = Typography(
-    headlineMedium = Typography().headlineMedium.copy(fontFamily = CalSans, fontWeight = FontWeight.Bold, letterSpacing = (-0.5).sp),
-    titleLarge = Typography().titleLarge.copy(fontFamily = CalSans, fontWeight = FontWeight.SemiBold, letterSpacing = (-0.3).sp),
-    titleMedium = Typography().titleMedium.copy(fontFamily = CalSans, fontWeight = FontWeight.SemiBold),
-    bodyLarge = Typography().bodyLarge.copy(fontSize = 16.sp),
-    labelLarge = Typography().labelLarge.copy(fontFamily = CalSans, fontWeight = FontWeight.SemiBold, letterSpacing = 0.6.sp),
-)
+private val GlassType = Typography().let { t ->
+    // iiSU fork: Cal Sans on every style, like iiSU (it has one weight; the weights below are kept for a fallback font)
+    fun androidx.compose.ui.text.TextStyle.cal() = copy(fontFamily = CalSans)
+    Typography(
+        displayLarge = t.displayLarge.cal(), displayMedium = t.displayMedium.cal(), displaySmall = t.displaySmall.cal(),
+        headlineLarge = t.headlineLarge.cal(), headlineSmall = t.headlineSmall.cal(),
+        titleSmall = t.titleSmall.cal(),
+        bodyMedium = t.bodyMedium.cal(), bodySmall = t.bodySmall.cal(),
+        labelMedium = t.labelMedium.cal(), labelSmall = t.labelSmall.cal(),
+        headlineMedium = t.headlineMedium.cal().copy(fontWeight = FontWeight.Bold, letterSpacing = (-0.5).sp),
+        titleLarge = t.titleLarge.cal().copy(fontWeight = FontWeight.SemiBold, letterSpacing = (-0.3).sp),
+        titleMedium = t.titleMedium.cal().copy(fontWeight = FontWeight.SemiBold),
+        bodyLarge = t.bodyLarge.cal().copy(fontSize = 16.sp),
+        labelLarge = t.labelLarge.cal().copy(fontWeight = FontWeight.SemiBold, letterSpacing = 0.6.sp),
+    )
+}
 
 /** [this] with [other] mixed in by [amount] (0–1). */
 private fun Color.compositeOverSelf(other: Color, amount: Float) = Color(

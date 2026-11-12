@@ -42,7 +42,9 @@ import androidx.compose.ui.composed
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.addOutline
 import androidx.compose.ui.graphics.asAndroidPath
+import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
@@ -203,11 +205,21 @@ fun Modifier.glassSurface(
     raised: Boolean = false,
     well: Color = Color.Unspecified,
 ): Modifier = this
-    .then(if (g.dark) Modifier else Modifier.drawWithCache {
-        val s = 1.dp.toPx()
-        val o = shape.createOutline(Size(size.width + s, size.height + s), layoutDirection, this)
-        onDrawBehind { translate(-s / 2f, -s / 2f) { drawOutline(o, Color(0x14000000), style = Stroke(s)) } }
-    })
+    // iiSU fork: iiSU's cards have no edge line but a soft shadow. Drawn outside the shape only — an elevation shadow shows
+    // through translucent glass and greys it.
+    .drawWithCache {
+        val path = androidx.compose.ui.graphics.Path().apply { addOutline(shape.createOutline(size, layoutDirection, this@drawWithCache)) }
+        val paint = android.graphics.Paint().apply {
+            color = if (g.dark) 0x4D000000 else 0x1A000000
+            maskFilter = android.graphics.BlurMaskFilter(10.dp.toPx(), android.graphics.BlurMaskFilter.Blur.NORMAL)
+        }
+        val dy = 3.dp.toPx()
+        onDrawBehind {
+            clipPath(path, androidx.compose.ui.graphics.ClipOp.Difference) {
+                translate(0f, dy) { drawContext.canvas.nativeCanvas.drawPath(path.asAndroidPath(), paint) }
+            }
+        }
+    }
     .clip(shape)
     .glassLens(shape)
     .then(if (well.isSpecified) Modifier.background(well, shape) else Modifier)
