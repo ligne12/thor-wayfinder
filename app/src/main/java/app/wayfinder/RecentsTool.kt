@@ -26,6 +26,7 @@ object RecentsTool {
         when (args.getOrNull(0)) {
             "list" -> return try { list(java.io.File(args[1])) } catch (t: Throwable) { fail(chain(t)) }
             "shot" -> return try { shot(args[1].toInt(), java.io.File(args[2])) } catch (t: Throwable) { fail(chain(t)) }
+            "open" -> return try { open(args[1].toInt(), args[2].toInt()) } catch (t: Throwable) { fail(chain(t)) }
         }
         val keep = (args.getOrNull(0) ?: "")
             .split(",").map { it.trim() }.filter { it.isNotEmpty() }.toHashSet()
@@ -127,6 +128,23 @@ object RecentsTool {
         dir.listFiles { f -> f.name.matches(Regex("\\d+\\.jpg")) && f.name !in ids }?.forEach { it.delete() }
         println("OK tasks=${lines.size} shots=$shots snapdir=${if (snapDir.isDirectory) "yes" else "no"}")
         halt(0)
+    }
+
+    /**
+     * `open <taskId> <display>`: that task as Recents opens it (startActivityFromRecents) — by its id, not its package: two
+     * tasks of one app each open their own, and one listed but no longer running is restored. A display < 0: where it was.
+     */
+    private fun open(taskId: Int, display: Int) {
+        val binder = Class.forName("android.os.ServiceManager").getMethod("getService", String::class.java)
+            .invoke(null, "activity_task") as? IBinder ?: return fail("activity_task unavailable")
+        val atm = Class.forName("android.app.IActivityTaskManager\$Stub").getMethod("asInterface", IBinder::class.java).invoke(null, binder)!!
+        val fromRecents = atm.javaClass.methods.firstOrNull { it.name == "startActivityFromRecents" && it.parameterTypes.size == 2 }
+            ?: return fail("startActivityFromRecents not found; " + sig(atm, "Recents"))
+        val opts = if (display >= 0) android.app.ActivityOptions.makeBasic().setLaunchDisplayId(display).toBundle() else null
+        val res = fromRecents.invoke(atm, taskId, opts) as? Int ?: 0
+        // ActivityManager.START_* : below 0 is a failure (no such task, …)
+        if (res < 0) return fail("startActivityFromRecents($taskId) = $res")
+        println("OK $res"); halt(0)
     }
 
     /** `shot <taskId> <dir>`: the task's full picture (the reduced one if that is all there is) as [dir]/shot.jpg. */

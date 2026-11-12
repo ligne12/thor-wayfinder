@@ -13,6 +13,9 @@ import java.io.File
 object RecentsSource {
     var tasks by mutableStateOf<List<RecentTask>?>(null)
         private set
+    /** Bumped by every successful read: a card decodes its picture again (an equal list wouldn't change [tasks]). */
+    var reads by androidx.compose.runtime.mutableIntStateOf(0)
+        private set
     private val busy = java.util.concurrent.atomic.AtomicBoolean(false)
     private val main = android.os.Handler(android.os.Looper.getMainLooper())
 
@@ -33,10 +36,17 @@ object RecentsSource {
                 android.util.Log.w("ThorRecents", "list: ${t.javaClass.simpleName}")
             } finally {
                 busy.set(false)
-                main.post { if (read != null) tasks = read; done(read != null) }
+                main.post { if (read != null) { tasks = read; reads++ }; done(read != null) }
             }
         }.apply { isDaemon = true; name = "recents-list" }.start()
     }
+
+    /** A card just closed: out of the list at once (the next open would show it until the list is read again). Main thread. */
+    fun forget(taskId: Int) { tasks = tasks?.filter { it.taskId != taskId } }
+
+    /** Opens [task] as Recents does, by its id ([RecentsTool]'s open mode), on its screen. Root: never the main thread. */
+    fun open(ctx: Context, task: RecentTask): Boolean =
+        PServiceBridge.runEntryPoint(ctx, "RecentsTool", "open", task.taskId.toString(), task.display.toString())?.startsWith("OK") == true
 
     /** The task's picture as last listed; null if there is none to read. */
     fun shotFile(ctx: Context, taskId: Int): File? = File(dir(ctx), "$taskId.jpg").takeIf { it.canRead() }

@@ -29,7 +29,7 @@ object RecentsModel {
     fun ramText(total: Long, available: Long): String =
         String.format(java.util.Locale.ROOT, "RAM %.1f / %.1f GB", (total - available).coerceAtLeast(0) / 1e9, total.coerceAtLeast(0) / 1e9)
 
-    /** What "Clear all" keeps: the locked apps, the app shown on the other screen, and [always] (the homes, Wayfinder). */
-    fun clearKeep(locked: Set<String>, otherScreenApp: String?, always: Set<String>): Set<String> =
-        locked + always + listOfNotNull(otherScreenApp)
+    /** What "Clear all" keeps: the locked apps, every app seen on the other screen, and [always] (the homes, Wayfinder). */
+    fun clearKeep(locked: Set<String>, otherScreenApps: Collection<String>, always: Set<String>): Set<String> =
+        locked + always + otherScreenApps
 }

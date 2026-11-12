@@ -38,7 +38,13 @@ class RecentsModelTest {
 
     @Test fun clearKeep_keepsLockedOtherScreenAndAlways() {
         assertEquals(setOf("lock.a", "other.b", "home.c", "app.wayfinder"),
-            RecentsModel.clearKeep(setOf("lock.a"), "other.b", setOf("home.c", "app.wayfinder")))
-        assertEquals(setOf("home.c"), RecentsModel.clearKeep(emptySet(), null, setOf("home.c")))
+            RecentsModel.clearKeep(setOf("lock.a"), listOf("other.b"), setOf("home.c", "app.wayfinder")))
+        assertEquals(setOf("home.c"), RecentsModel.clearKeep(emptySet(), emptyList(), setOf("home.c")))
+    }
+
+    @Test fun clearKeep_keepsEveryAppSeenOnTheOtherScreen() {
+        // the app tracked there and the one its window shows (tracking can lag): a game's unsaved run must survive
+        assertEquals(setOf("tracked.a", "shown.b", "home.c"),
+            RecentsModel.clearKeep(emptySet(), listOf("tracked.a", "shown.b"), setOf("home.c")))
     }
 }

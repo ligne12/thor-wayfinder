@@ -89,7 +89,7 @@ object RecentsScreen {
     private var service: AccessibilityService? = null
     private var origin: String? = null
     private var always: Set<String> = emptySet()
-    private var otherScreenApp: () -> String? = { null }
+    private var otherScreenApps: () -> Collection<String> = { emptyList() }
     /** The screen it shows on; null: not shown. */
     var shownOn: Int? = null
         private set
@@ -101,7 +101,7 @@ object RecentsScreen {
     private fun bg(work: () -> Unit) = Thread(work).apply { isDaemon = true; name = "recents-act" }.start()
 
     /** Shows it on [display] over Android's Recents; false if the window couldn't be added (Android's stays). */
-    fun show(service: AccessibilityService, display: Int, origin: String?, always: Set<String>, otherScreenApp: () -> String?): Boolean {
+    fun show(service: AccessibilityService, display: Int, origin: String?, always: Set<String>, otherScreenApps: () -> Collection<String>): Boolean {
         view?.let { v ->
             if (shownOn == display) {
                 if (closing) { closing = false; v.animate().cancel(); v.animate().alpha(1f).setDuration(FADE_MS).start() }
@@ -112,13 +112,22 @@ object RecentsScreen {
         val d = service.getSystemService(android.hardware.display.DisplayManager::class.java).getDisplay(display) ?: return false
         val ctx = android.view.ContextThemeWrapper(service.createDisplayContext(d), R.style.Theme_Wayfinder_Glass)
         val wm = ctx.getSystemService(WindowManager::class.java)
-        this.service = service; this.origin = origin; this.always = always; this.otherScreenApp = otherScreenApp
+        this.service = service; this.origin = origin; this.always = always; this.otherScreenApps = otherScreenApps
         removed = emptySet()
         cards.let { selectedId = it.getOrNull(RecentsModel.initial(it, origin))?.taskId ?: -1 }
         app.wayfinder.ui.IisuLookSource.refreshAsync(service)   // iiSU's theme, font, colours may have changed
         val owner = app.wayfinder.keyboard.ComposeOwner()
         val root = object : android.widget.FrameLayout(ctx) {
             override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+                when (event.keyCode) {
+                    // the D-pad (a HAT made into arrows by this window): left / right browse; up / down would take the focus to
+                    // a badge or a button while A still opens the chosen card
+                    KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_DPAD_RIGHT -> {
+                        if (event.action == KeyEvent.ACTION_DOWN) browse(if (event.keyCode == KeyEvent.KEYCODE_DPAD_LEFT) -1 else 1)
+                        return true
+                    }
+                    KeyEvent.KEYCODE_DPAD_UP, KeyEvent.KEYCODE_DPAD_DOWN -> return true
+                }
                 if (event.keyCode != KeyEvent.KEYCODE_BACK) return super.dispatchKeyEvent(event)
                 if (event.action == KeyEvent.ACTION_UP) leave()
                 return true
@@ -152,8 +161,9 @@ object RecentsScreen {
         }
     }
 
-    /** Fades it out (Recents left, an app opened). */
-    fun close() {
+    /** Fades it out (Recents left, an app opened); [now]: at once (the screen going off — no animation runs then). */
+    fun close(now: Boolean = false) {
+        if (now) { remove(); return }
         val v = view ?: return
         if (closing) return
         closing = true
@@ -199,10 +209,11 @@ object RecentsScreen {
         val here = shownOn ?: return
         val left = cards.lastOrNull { it.pkg == origin && it.display == here && it.taskId != t.taskId }
         bg {
-            val ok = PServiceBridge.frontTask(s, t.pkg, t.display)
+            val ok = RecentsSource.open(s, t)
             // an app on the other screen comes forward there; this screen leaves Recents for the app it had (or its home)
-            if (ok && t.display != here) { if (left == null || !PServiceBridge.frontTask(s, left.pkg, here)) PServiceBridge.goHomeOnDisplay(here) }
-            main.post { if (ok) close() else android.util.Log.w("ThorRecents", "open ${t.pkg}: failed") }
+            if (ok && t.display != here) { if (left == null || !RecentsSource.open(s, left)) PServiceBridge.goHomeOnDisplay(here) }
+            // failed (gone, no root): Android's Recents underneath takes over
+            main.post { if (!ok) android.util.Log.w("ThorRecents", "open ${t.pkg}: failed"); close() }
         }
     }
 
@@ -213,6 +224,7 @@ object RecentsScreen {
         removed = removed + t.taskId
         val rest = cards
         selectedId = rest.getOrNull(i.coerceAtMost(rest.lastIndex))?.taskId ?: -1
+        RecentsSource.forget(t.taskId)
         bg { PServiceBridge.exec("am stack remove ${t.taskId}") }
         if (rest.isEmpty()) { bg { PServiceBridge.goHomeOnDisplay(here) }; close() }   // the last card: its home
     }
@@ -220,8 +232,11 @@ object RecentsScreen {
     fun clearAll() {
         val s = service ?: return
         val here = shownOn ?: return
-        val keep = RecentsModel.clearKeep(AppSettings.recentsLocked, otherScreenApp(), always).joinToString(",")
-        bg { PServiceBridge.runEntryPoint(s, "RecentsTool", keep); PServiceBridge.goHomeOnDisplay(here) }
+        val keep = RecentsModel.clearKeep(AppSettings.recentsLocked, otherScreenApps(), always).joinToString(",")
+        bg {
+            PServiceBridge.runEntryPoint(s, "RecentsTool", keep); PServiceBridge.goHomeOnDisplay(here)
+            main.post { RecentsSource.refreshAsync(s) }   // the next open starts from what is left
+        }
         close()
     }
 
@@ -259,6 +274,7 @@ object RecentsScreen {
     private fun Screen(ctx: Context, display: Int) {
         val list = cards
         LaunchedEffect(list) {
+            if (list.isEmpty()) { close(); return@LaunchedEffect }   // nothing left to show: Android's own empty Recents
             if (list.none { it.taskId == selectedId }) selectedId = list.getOrNull(RecentsModel.initial(list, origin))?.taskId ?: -1
         }
         val ratios = remember { HashMap<Int, Float>() }
@@ -308,9 +324,8 @@ object RecentsScreen {
         val pm = ctx.packageManager
         val label = remember(t.pkg) { runCatching { pm.getApplicationLabel(pm.getApplicationInfo(t.pkg, 0)).toString() }.getOrDefault(t.pkg) }
         val icon = remember(t.pkg) { runCatching { pm.getApplicationIcon(t.pkg).toBitmap(96, 96).asImageBitmap() }.getOrNull() }
-        val listed = RecentsSource.tasks
-        // read again with each new list: the file is the task's latest picture
-        val pic by produceState<ImageBitmap?>(null, t.taskId, listed) {
+        // decoded again with each read: the file is the task's latest picture (the app just left gets its new one a moment in)
+        val pic by produceState<ImageBitmap?>(null, t.taskId, RecentsSource.reads) {
             value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { decode(RecentsSource.shotFile(ctx, t.taskId)) }
         }
         val focus = remember { FocusRequester() }

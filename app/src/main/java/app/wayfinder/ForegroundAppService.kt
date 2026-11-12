@@ -935,10 +935,11 @@ class ForegroundAppService : AccessibilityService() {
      */
     private fun coverRecents(d: Int) {
         val at = android.os.SystemClock.uptimeMillis()
-        val asked = recentsOrigin?.takeIf { at - recentsOriginAt < 3000 && it != HOME_ORIGIN && it != WAYFINDER_ORIGIN }
-        val origin = asked ?: displayApps[d]
+        // the app left is the one on the screen Recents covers (our RECENTS can name the other screen's: the controller's)
+        val origin = displayApps[d]
         val always = launcherPackages.toSet() + packageName
-        val other = { (if (d == PRIMARY_DISPLAY) secondDisplayId() else PRIMARY_DISPLAY)?.let { displayApps[it] } }
+        // the other screen's app, tracked and as its window shows (tracking can lag): "Clear all" must not close a game there
+        val other = { (if (d == PRIMARY_DISPLAY) secondDisplayId() else PRIMARY_DISPLAY)?.let { listOfNotNull(displayApps[it], appOnDisplay(it)) }.orEmpty() }
         if (!RecentsSource.tasks.isNullOrEmpty()) {
             RecentsScreen.show(this, d, origin, always, other)
             RecentsSource.refreshAsync(this)
@@ -1602,6 +1603,8 @@ class ForegroundAppService : AccessibilityService() {
                     if (QuickPanelWindow.isOpen && panelTook && AppSettings.focusLockEnabled) lockOnWake = true
                     InputMonitor.send("S 0")   // the root helper rests too (GitHub #40)
                     QuickPanelWindow.close()
+                    // iiSU fork: the multitask too, at once — an accessibility overlay would show over the lock screen at the wake
+                    RecentsScreen.close(now = true); exitRecents()
                     app.wayfinder.lights.StickLights.pause(); SleepEngine.onScreenOff(); GyroEngine.setScreenOn(false)
                     // the root helper's samplers (screen colour ~12/s, frame rate) sleep too
                     if (ambientPhys != null) { InputMonitor.send("A -"); ambientPhys = null }
