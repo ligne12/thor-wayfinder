@@ -329,15 +329,6 @@ fun Modifier.focusIndicator(shape: Shape, inset: Boolean = false): Modifier = co
     // one Paint per element (it was allocated every frame), only its colour changes
     val density = androidx.compose.ui.platform.LocalDensity.current
     val maxGrowPx = with(density) { FOCUS_GROW_MAX.toPx() }
-    val paint = remember(density, inset) {
-        android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-            style = android.graphics.Paint.Style.STROKE
-            with(density) {
-                strokeWidth = (if (inset) 3.dp else 5.dp).toPx()
-                maskFilter = android.graphics.BlurMaskFilter((if (inset) 6.dp else 10.dp).toPx(), android.graphics.BlurMaskFilter.Blur.NORMAL)
-            }
-        }
-    }
     val marginPx = with(density) { FOCUS_VIEW_MARGIN.toPx() }
     // iiSU fork: iiSU's ring turns — its gradient goes round the element clockwise, one turn in 6 s, while it has the focus
     // (measured on iiSU's home: a quarter turn in 1.46 s). Read in the draw phase only: it redraws the ring, nothing else.
@@ -384,46 +375,28 @@ fun Modifier.focusIndicator(shape: Shape, inset: Boolean = false): Modifier = co
             val s = 1f + grow * (if (w > 0f) minOf(FOCUS_SCALE - 1f, maxGrowPx / w) else FOCUS_SCALE - 1f)
             scaleX = s; scaleY = s
         })
-        // Focus halo: a blurred accent STROKE just outside the edge. (Not a Modifier.shadow — a filled shadow shows THROUGH
-        // translucent glass as a dark band; a ring around the outside doesn't.)
-        .drawBehind {
-            if (halo <= 0.01f) return@drawBehind
-            val pad = if (inset) -2.dp.toPx() else 3.dp.toPx()
-            val w = size.width + 2 * pad; val h = size.height + 2 * pad
-            if (w <= 0f || h <= 0f) return@drawBehind
-            paint.color = g.accent2.copy(alpha = (if (inset) 0.25f else 0.35f) * halo).toArgb()   // iiSU fork: a faint glow
-            val outline = shape.createOutline(Size(w, h), layoutDirection, this)
-            drawIntoCanvas { c ->
-                val n = c.nativeCanvas
-                n.save(); n.translate(-pad, -pad)
-                when (outline) {
-                    is Outline.Rounded -> outline.roundRect.let { r ->
-                        n.drawRoundRect(r.left, r.top, r.right, r.bottom, r.topLeftCornerRadius.x, r.topLeftCornerRadius.y, paint) }
-                    is Outline.Rectangle -> outline.rect.let { r -> n.drawRect(r.left, r.top, r.right, r.bottom, paint) }
-                    is Outline.Generic -> n.drawPath(outline.path.asAndroidPath(), paint)
-                }
-                n.restore()
-            }
-        }
-        // build 18 (A1): the ring — 2 dp in g.focusRing (white on the dark themes, a deep accent on light), drawn over
-        // everything after it in the chain: outside the element with a 2 dp gap, at the halo's outer edge — or just inside
-        // the edge when [inset] (a clipping parent can't cut it). It reads on any fill, a selected option's accent included
-        // (the accent→accent2 rim vanished there); the halo stays the accent's glow.
+        // iiSU fork: iiSU's focus — no glow around the element: its edge becomes a band about 5 dp wide, inside the shape, in
+        // the turning gradient, a bright line on its outer edge and a softer one on its inner edge (measured on iiSU's home:
+        // a 12 px violet-to-blue band between #E6D7FA and #DDC8F9). The element grows about 3 % (the scale above), as iiSU's.
         .drawWithContent {
             drawContent()
             if (halo <= 0.01f) return@drawWithContent
-            // iiSU fork: iiSU's ring — 3 dp, violet → blue → its focus colour across the element, the axis turning
-            val stroke = (if (inset) 2.dp else 3.dp).toPx()
-            val pad = if (inset) -stroke / 2f else 2.dp.toPx() + stroke / 2f
-            val w = size.width + 2 * pad; val h = size.height + 2 * pad
-            if (w <= 0f || h <= 0f) return@drawWithContent
-            val outline = shape.createOutline(Size(w, h), layoutDirection, this)
+            val band = (if (inset) 3.dp else 5.dp).toPx()
+            val o = shape.createOutline(size, layoutDirection, this)
             val a = (Math.PI / 4 + 2 * Math.PI * (turn?.value ?: 0f)).toFloat()   // 0: violet top-left, focus colour bottom-right
-            val r = maxOf(w, h) / 2f
+            val r = maxOf(size.width, size.height) / 2f
             val d = androidx.compose.ui.geometry.Offset(kotlin.math.cos(a) * r, kotlin.math.sin(a) * r)
-            val c = androidx.compose.ui.geometry.Offset(w / 2f, h / 2f)
-            translate(-pad, -pad) {
-                drawOutline(outline, Brush.linearGradient(listOf(g.accent2, g.accent, g.focusRing), c - d, c + d), alpha = halo, style = Stroke(stroke))
+            val c = androidx.compose.ui.geometry.Offset(size.width / 2f, size.height / 2f)
+            clipPath(androidx.compose.ui.graphics.Path().apply { addOutline(o) }) {
+                // strokes are centred on the edge: inside the clip only their inner half shows
+                drawOutline(o, Brush.linearGradient(listOf(g.accent2, g.accent, g.focusRing), c - d, c + d), alpha = halo, style = Stroke(band * 2))
+                drawOutline(o, Color.White.copy(alpha = 0.75f), alpha = halo, style = Stroke(1.5.dp.toPx()))
+                if (o is Outline.Rounded) o.roundRect.let { rr ->
+                    val inner = androidx.compose.ui.geometry.RoundRect(rr.left + band, rr.top + band, rr.right - band, rr.bottom - band,
+                        androidx.compose.ui.geometry.CornerRadius((rr.topLeftCornerRadius.x - band).coerceAtLeast(0f)))
+                    drawPath(androidx.compose.ui.graphics.Path().apply { addRoundRect(inner) }, Color.White.copy(alpha = 0.45f),
+                        alpha = halo, style = Stroke(1.dp.toPx()))
+                }
             }
         }
 }

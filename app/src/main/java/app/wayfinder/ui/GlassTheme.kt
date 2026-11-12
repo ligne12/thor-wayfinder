@@ -36,19 +36,20 @@ object Glass {
 }
 
 /** dev build 17 (WP8): corner radii by role — a page never writes its own number (SourceRulesTest rule 5). */
-/** iiSU fork: iiSU's two radii — about 11 dp on its tiles, options and rows, 20 dp on its cards and sheets (measured). */
+/** iiSU fork: iiSU rounds every box the same, small or large — about 20 px (9 dp) on its home tiles and cards (measured);
+ *  only its sheets and popups are rounder (20 dp). */
 object Radii {
     val Hairline = 2.dp   // underlines (popup tabs, controller tabs)
     val KeyCap = 10.dp    // a key or key-sized cell: Wayfinder keyboard, Game controls' key picker, the Test page's buttons
-    val Chip = 10.dp      // compact buttons and chips in dense places (GlassButton COMPACT, popup tabs, lists in popups)
-    val Control = 11.dp   // a control: option / segment, choice row, text field, notice, inner switch row, GlassButton REGULAR
-    val Row = 11.dp       // a page-level pill or row: Back pill, GlassListRow, header pill groups, listen / record buttons
-    val Card = 20.dp      // a setting card, a quick-panel card, an app row
-    val Action = 11.dp    // GlassActionButton tiles
-    val Tile = 11.dp      // the Hub's small tiles and strip, the combo capture card
-    val Panel = 20.dp     // a panel (GlassPanel / FocusableGlass default), Game controls' drawing panel
+    val Chip = 9.dp      // compact buttons and chips in dense places (GlassButton COMPACT, popup tabs, lists in popups)
+    val Control = 9.dp   // a control: option / segment, choice row, text field, notice, inner switch row, GlassButton REGULAR
+    val Row = 9.dp       // a page-level pill or row: Back pill, GlassListRow, header pill groups, listen / record buttons
+    val Card = 9.dp      // a setting card, a quick-panel card, an app row
+    val Action = 9.dp    // GlassActionButton tiles
+    val Tile = 9.dp      // the Hub's small tiles and strip, the combo capture card
+    val Panel = 9.dp     // a panel (GlassPanel / FocusableGlass default), Game controls' drawing panel
     val Modal = 20.dp     // popups and sheets
-    val Large = 20.dp     // the Hub's menu cards, the tour card
+    val Large = 9.dp      // the Hub's menu cards, the tour card
     val Swatch = 24.dp    // a colour swatch's round glass (half its 48 dp)
     /** A fill drawn [by] inside a rounded element (DirArm's changed fill): its radius. */
     fun inset(outer: Dp, by: Dp = 2.dp) = outer - by
