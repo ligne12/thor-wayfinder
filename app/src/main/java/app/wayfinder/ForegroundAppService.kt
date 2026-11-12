@@ -2284,6 +2284,8 @@ class ForegroundAppService : AccessibilityService() {
                 // the watch took Recents (a "launcher" package) for a frontend covering the moved app and brought that app back
                 // over it; and once Recents was left for the home or another card, the next look would bring it back again
                 swapWatchGen++
+                // iiSU fork: the multitask's list and pictures (root, off the main thread)
+                RecentsSource.refreshAsync(this) { ok -> Log.d(TAG, "recents list: $ok, ${RecentsSource.tasks?.size} tasks") }
                 enterRecents(displayId ?: focusedDisplayId())
             } else if (recentsDisplay != null) for (ms in listOf(250L, 900L)) handler.postDelayed({
                 // twice: Recents can still be animating out at the first look
