@@ -375,13 +375,13 @@ fun Modifier.focusIndicator(shape: Shape, inset: Boolean = false): Modifier = co
             val s = 1f + grow * (if (w > 0f) minOf(FOCUS_SCALE - 1f, maxGrowPx / w) else FOCUS_SCALE - 1f)
             scaleX = s; scaleY = s
         })
-        // iiSU fork: iiSU's focus — no glow around the element: its edge becomes a band about 5 dp wide, inside the shape, in
-        // the turning gradient, a bright line on its outer edge and a softer one on its inner edge (measured on iiSU's home:
-        // a 12 px violet-to-blue band between #E6D7FA and #DDC8F9). The element grows about 3 % (the scale above), as iiSU's.
+        // iiSU fork: iiSU's focus — no glow around the element: its edge becomes a band about 6 dp wide, inside the shape, in
+        // the turning gradient, lighter toward its outer edge and full colour at its inner edge (a tube), with a near-white
+        // line outside (measured on iiSU's home: 14 px from #A3A9E5 to #5C6BD3 inside #F2F4FB). It grows about 3 %, as iiSU's.
         .drawWithContent {
             drawContent()
             if (halo <= 0.01f) return@drawWithContent
-            val band = (if (inset) 3.dp else 5.dp).toPx()
+            val band = (if (inset) 3.dp else 6.dp).toPx()
             val o = shape.createOutline(size, layoutDirection, this)
             val a = (Math.PI / 4 + 2 * Math.PI * (turn?.value ?: 0f)).toFloat()   // 0: violet top-left, focus colour bottom-right
             val r = maxOf(size.width, size.height) / 2f
@@ -390,13 +390,10 @@ fun Modifier.focusIndicator(shape: Shape, inset: Boolean = false): Modifier = co
             clipPath(androidx.compose.ui.graphics.Path().apply { addOutline(o) }) {
                 // strokes are centred on the edge: inside the clip only their inner half shows
                 drawOutline(o, Brush.linearGradient(listOf(g.accent2, g.accent, g.focusRing), c - d, c + d), alpha = halo, style = Stroke(band * 2))
-                drawOutline(o, Color.White.copy(alpha = 0.75f), alpha = halo, style = Stroke(1.5.dp.toPx()))
-                if (o is Outline.Rounded) o.roundRect.let { rr ->
-                    val inner = androidx.compose.ui.geometry.RoundRect(rr.left + band, rr.top + band, rr.right - band, rr.bottom - band,
-                        androidx.compose.ui.geometry.CornerRadius((rr.topLeftCornerRadius.x - band).coerceAtLeast(0f)))
-                    drawPath(androidx.compose.ui.graphics.Path().apply { addRoundRect(inner) }, Color.White.copy(alpha = 0.45f),
-                        alpha = halo, style = Stroke(1.dp.toPx()))
-                }
+                // the tube's shading: white layered from the outer edge, about +35 % there and nothing at the inner edge
+                for ((k, w) in listOf(0.33f to 0.16f, 0.66f to 0.11f, 1f to 0.08f))
+                    drawOutline(o, Color.White.copy(alpha = w), alpha = halo, style = Stroke(band * 2 * k))
+                drawOutline(o, Color.White.copy(alpha = 0.85f), alpha = halo, style = Stroke(1.5.dp.toPx()))
             }
         }
 }

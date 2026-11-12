@@ -78,7 +78,8 @@ object IisuLookSource {
      * Re-reads iiSU's settings if the file changed, off the main thread ([app.wayfinder.PServiceBridge.exec] blocks), read
      * only. Nothing readable (no root service, no file, not a preferences file): the last look stays.
      */
-    private fun log(what: String) { if (app.wayfinder.BuildConfig.DEBUG) android.util.Log.d("IisuLook", what) }
+    // one line per read at most (a changed file), so kept in release: it is how to tell what Wayfinder took from iiSU
+    private fun log(what: String) = android.util.Log.i("IisuLook", what)
 
     fun refreshAsync() {
         if (!busy.compareAndSet(false, true)) return
