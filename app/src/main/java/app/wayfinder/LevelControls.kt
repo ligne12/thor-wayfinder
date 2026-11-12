@@ -170,7 +170,8 @@ internal fun LevelRow(icon: ImageVector?, label: String, compact: Boolean, value
         val h = if (compact) 30.dp else 36.dp
         // build 18 (A6): always a slider — not known yet = empty, no knob, inert, but it takes the page's entry (the page
         // opened on the card after it: Screens on "3-finger tap")
-        GlassSlider(pos ?: 0f, Modifier.weight(1f), step = step, height = h, enabled = pos != null, onChange = onChange)
+        // iiSU fork: no step dots in the quick panel's compact rows (Thomas)
+        GlassSlider(pos ?: 0f, Modifier.weight(1f), step = step, height = h, enabled = pos != null, dots = !compact, onChange = onChange)
         // build 18 (A20): 40 dp in a compact row — "Muted" and "100 %" fit on one line (34 wrapped them)
         Text(value ?: "…", color = g.textSecondary, style = MaterialTheme.typography.bodySmall.takeIf { compact } ?: MaterialTheme.typography.bodyMedium,
             modifier = Modifier.width(if (compact) 40.dp else 64.dp), textAlign = TextAlign.End, maxLines = 1)

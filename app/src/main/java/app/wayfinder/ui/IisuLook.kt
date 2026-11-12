@@ -51,6 +51,8 @@ data class IisuLook(
         const val ACCENT2 = 0xFF9675E3.toInt()
         /** iiSU's slider fill (its settings' sliders, measured): one flat light cyan, not the gradient. */
         const val SLIDER = 0xFF72C5E4.toInt()
+        /** iiSU's light menu card (its settings, around a slider, measured): the slider's white track and thumb read on it. */
+        const val MENU_LIGHT = 0xFFF1F6F8.toInt()
         /** iiSU's own selection gradient (its brand cyan and violet, read in its code): with the custom one off, or unset. */
         const val BRAND_CYAN = 0xFF71E0FF.toInt()
         const val BRAND_VIOLET = 0xFFC56EFF.toInt()

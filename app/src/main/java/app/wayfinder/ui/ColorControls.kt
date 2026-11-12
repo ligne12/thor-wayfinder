@@ -246,13 +246,13 @@ fun SliderRow(modifier: Modifier = Modifier, horizontalArrangement: Arrangement.
  */
 @Composable
 fun GlassSlider(value: Float, modifier: Modifier = Modifier, step: Float = 0.05f, height: androidx.compose.ui.unit.Dp = 44.dp,
-                enabled: Boolean = true, onChange: (Float) -> Unit) {
+                enabled: Boolean = true, dots: Boolean = true, onChange: (Float) -> Unit) {
     val g = LocalGlass.current
     var focused by remember { mutableStateOf(false) }
     val on by androidx.compose.runtime.rememberUpdatedState(enabled)
     val change by androidx.compose.runtime.rememberUpdatedState(onChange)
     val latest: (Float) -> Unit = { v -> if (on) change(v) }
-    val shape = CapsuleShape   // the round knob nests in its ends
+    val now by androidx.compose.runtime.rememberUpdatedState(value)
     // dev build 16 (WP7): in a SliderRow, at a limit the key goes on (to the row's other controls); elsewhere kept as before.
     // A page whose first content is a slider opens on it (OfferEntry)
     val inRow = LocalSliderRow.current
@@ -276,42 +276,89 @@ fun GlassSlider(value: Float, modifier: Modifier = Modifier, step: Float = 0.05f
             }
             .focusRole(FocusRole.SLIDER)        // build 18 (A14): the page's button legend ("◀▶ change")
             .focusable()
-            .clip(shape)
-            // The empty part must read on light glass too (white-on-white vanished).
-            .background(if (g.dark) Color(0x26FFFFFF) else Color(0x1F28306A), shape)
-            .border(1.dp, g.rimBottom, shape)
-            .pointerInput(Unit) { detectTapGestures { latest(posToValue(it.x, size.width.toFloat(), size.height.toFloat())) } }
+            // iiSU fork: a tap on ◂ / ▸ steps, elsewhere it sets the value where the finger is
+            .pointerInput(Unit) {
+                detectTapGestures {
+                    val a = SLIDER_ARROW.toPx()
+                    latest(when {
+                        it.x < a -> (now - step).coerceIn(0f, 1f)
+                        it.x > size.width - a -> (now + step).coerceIn(0f, 1f)
+                        else -> posToValue(it.x, size.width.toFloat())
+                    })
+                }
+            }
             // Sideways drags only: a vertical swipe that starts on the slider scrolls the page
             // (it used to move the slider — the saturation changed while scrolling, 2026-09-24)
             .pointerInput(Unit) {
-                detectHorizontalDragGestures { c, _ ->
-                    latest(posToValue(c.position.x, size.width.toFloat(), size.height.toFloat()))
-                }
+                detectHorizontalDragGestures { c, _ -> latest(posToValue(c.position.x, size.width.toFloat())) }
             },
     ) {
-        // One geometry for knob, fill and touch: the knob (nearly the track's height, like
-        // a switch) travels between the rounded ends; the fill runs to the knob's CENTRE so
-        // its end always hides under it — no sliver at 0, no bulge beside the knob.
         Canvas(Modifier.matchParentSize()) {
-            val h = this.size.height; val w = this.size.width
-            // The knob is exactly the track's height (a smaller round button looked detached
-            // from the slider), nested in the capsule's rounded ends.
-            val r = h / 2f
-            if (!enabled) return@Canvas             // A6: not known yet — the empty track only
-            val x = r + (w - 2f * r) * value.coerceIn(0f, 1f)
-            drawRect(Color(IisuLook.SLIDER), size = androidx.compose.ui.geometry.Size(x, h))   // iiSU fork: iiSU's slider fill
-            val c = Offset(x, h / 2f)
-            drawCircle(Color.Black.copy(alpha = 0.22f), r, c + Offset(1.dp.toPx(), 0f))   // soft edge on the track side
-            drawCircle(Color.White, r - 0.5.dp.toPx(), c)
-            if (focused) drawCircle(g.accent, r - 2.5.dp.toPx(), c, style = Stroke(3.dp.toPx()))
+            val a = SLIDER_ARROW.toPx()
+            // ◂ ▸ at the ends, as iiSU's settings draw them
+            val tri = 5.dp.toPx(); val cy = this.size.height / 2f; val ink = g.textPrimary.copy(alpha = 0.85f)
+            drawPath(androidx.compose.ui.graphics.Path().apply { moveTo(a / 2 - tri / 2, cy); lineTo(a / 2 + tri / 2, cy - tri); lineTo(a / 2 + tri / 2, cy + tri); close() }, ink)
+            val ra = this.size.width - a / 2
+            drawPath(androidx.compose.ui.graphics.Path().apply { moveTo(ra + tri / 2, cy); lineTo(ra - tri / 2, cy - tri); lineTo(ra - tri / 2, cy + tri); close() }, ink)
+            // A6: not known yet — the empty track only
+            iisuSlider(if (enabled) value else null, if (dots) Math.round(1f / step) + 1 else 0, g.dark, a, this.size.width - a)
         }
     }
 }
 
-/** Touch x → slider value, with the same knob travel the slider draws (see GlassSlider). */
-private fun androidx.compose.ui.unit.Density.posToValue(x: Float, w: Float, h: Float): Float {
-    val edge = h / 2f   // inset + knob radius = half the height
-    return ((x - edge) / (w - 2f * edge).coerceAtLeast(1f)).coerceIn(0f, 1f)
+/** iiSU fork: the room each of a slider's ◂ ▸ takes at its ends. */
+private val SLIDER_ARROW = 18.dp
+
+/** Touch x → slider value, with the thumb travel [iisuSlider] draws between the arrows. */
+private fun androidx.compose.ui.unit.Density.posToValue(x: Float, w: Float): Float {
+    val a = SLIDER_ARROW.toPx(); val t = 2.dp.toPx()   // half the thumb
+    return ((x - a - t) / (w - 2f * a - 2f * t).coerceAtLeast(1f)).coerceIn(0f, 1f)
+}
+
+/**
+ * iiSU fork: iiSU's slider, measured on its settings (Material 3's newer slider): a 16 dp track — the filled part #72C5E4,
+ * the rest near-white (light) or #E1E1E1 (dark), 2 dp corners at the thumb, round outer ends —, a white 4 dp bar for a
+ * thumb (up to 44 dp long) with a 6 dp gap on each side, and a dot per position: white on the fill, fill-coloured beyond
+ * (none on a slider too short for them, or with [positions] < 2). [value] null: the empty track (not known yet). Along [from]..[to]; [vertical]:
+ * it fills from the bottom, across the canvas' width.
+ */
+fun androidx.compose.ui.graphics.drawscope.DrawScope.iisuSlider(value: Float?, positions: Int, dark: Boolean, from: Float, to: Float,
+                                                                 vertical: Boolean = false) {
+    val across = if (vertical) size.width else size.height
+    val track = minOf(16.dp.toPx(), across * 0.5f)
+    val thumbW = 4.dp.toPx(); val thumbL = minOf(44.dp.toPx(), across)
+    val gap = 6.dp.toPx(); val inner = 2.dp.toPx(); val outer = track / 2
+    val k0 = (across - track) / 2; val k1 = k0 + track
+    val fill = Color(IisuLook.SLIDER); val rest = if (dark) Color(0xFFE1E1E1) else Color(0xFFFCFEFE)
+    // along the axis → the canvas: left to right, or bottom to top
+    fun rect(a0: Float, a1: Float, c0: Float, c1: Float) =
+        if (!vertical) androidx.compose.ui.geometry.Rect(a0, c0, a1, c1) else androidx.compose.ui.geometry.Rect(c0, size.height - a1, c1, size.height - a0)
+    fun seg(a0: Float, a1: Float, startR: Float, endR: Float, color: Color) {
+        if (a1 - a0 < 1f) return
+        val half = (a1 - a0) / 2
+        val s = androidx.compose.ui.geometry.CornerRadius(minOf(startR, half)); val e = androidx.compose.ui.geometry.CornerRadius(minOf(endR, half))
+        val r = rect(a0, a1, k0, k1)
+        val rr = if (!vertical) androidx.compose.ui.geometry.RoundRect(r, topLeft = s, topRight = e, bottomRight = e, bottomLeft = s)
+                 else androidx.compose.ui.geometry.RoundRect(r, topLeft = e, topRight = e, bottomRight = s, bottomLeft = s)
+        drawPath(androidx.compose.ui.graphics.Path().apply { addRoundRect(rr) }, color)
+    }
+    if (value == null) { seg(from, to, outer, outer, rest); return }
+    val len = to - from
+    val c = from + thumbW / 2 + value.coerceIn(0f, 1f) * (len - thumbW)
+    val endFill = c - thumbW / 2 - gap; val startRest = c + thumbW / 2 + gap
+    seg(from, endFill, outer, inner, fill)
+    seg(startRest, to, inner, outer, rest)
+    val dot = 2.dp.toPx()
+    // a dot per position (iiSU's are 26 dp apart); none when they'd pack closer than 12 dp, or [positions] < 2
+    val apart = if (positions >= 2) (len - 2 * outer) / (positions - 1) else 0f
+    val spots = if (positions >= 2 && apart >= 12.dp.toPx()) (0 until positions).map { from + outer + it * apart } else emptyList()
+    for (p in spots) {
+        if (p > endFill - dot && p < startRest + dot) continue   // under the thumb or its gap
+        val r = rect(p - dot, p + dot, (across - 2 * dot) / 2, (across + 2 * dot) / 2)
+        drawCircle(if (p < c) Color.White else fill, dot, r.center)
+    }
+    val t = rect(c - thumbW / 2, c + thumbW / 2, (across - thumbL) / 2, (across + thumbL) / 2)
+    drawRoundRect(Color.White, t.topLeft, t.size, androidx.compose.ui.geometry.CornerRadius(thumbW / 2))
 }
 
 /**

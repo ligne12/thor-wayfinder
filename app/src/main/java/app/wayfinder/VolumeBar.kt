@@ -50,6 +50,7 @@ import app.wayfinder.ui.Radii
 import app.wayfinder.ui.ThorGlassTheme
 import app.wayfinder.ui.accentStops
 import app.wayfinder.ui.glassSurface
+import app.wayfinder.ui.iisuSlider
 
 /**
  * iiSU fork: the volume bar. The volume keys set the media volume themselves (no FLAG_SHOW_UI: Android's bar stays away)
@@ -222,13 +223,17 @@ object VolumeBar {
             .apply { isDaemon = true; name = "dnd-access" }.start()
     }
 
+    /** The bar's card: iiSU's menu card — light grey in light (the slider's white track and thumb vanished on white). */
+    private fun menuCard(g: app.wayfinder.ui.GlassColors) =
+        if (g.dark) g.surfaceModal else androidx.compose.ui.graphics.Color(app.wayfinder.ui.IisuLook.MENU_LIGHT)
+
     @Composable
     private fun Bar(onRinger: () -> Unit, onLevel: (Int) -> Unit, onRingerMode: (Int) -> Unit, onMore: () -> Unit) {
         val g = LocalGlass.current
         // iiSU's menus: a solid card (no home-tile veil: it would vanish over a game), 20 dp corners
         val card = RoundedCornerShape(Radii.Modal)
         if (wide) { Wide(card, onRingerMode); return }
-        Column(Modifier.padding(8.dp).width(68.dp).glassSurface(g, card, well = g.surfaceModal, veil = false).padding(vertical = 12.dp),
+        Column(Modifier.padding(8.dp).width(68.dp).glassSurface(g, card, well = menuCard(g), veil = false).padding(vertical = 12.dp),
             horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Box(Modifier.size(44.dp).glassSurface(g, androidx.compose.foundation.shape.CircleShape, well = g.surfaceModal, veil = false)
                 .clickable(onClick = onRinger).semantics { contentDescription = "Ringer: ${ringerName(ringer)}" },
@@ -237,7 +242,7 @@ object VolumeBar {
             }
             val pct = VolumeRules.percent(level, max)
             // the track: iiSU's slider colour, filled from the bottom; a tap or a drag sets the level where the finger is
-            Box(Modifier.width(14.dp).height(160.dp).clip(CapsuleShape).background(g.textTertiary.copy(alpha = 0.18f))
+            Box(Modifier.width(40.dp).height(170.dp)
                 .semantics { contentDescription = "Volume $pct %" }
                 .pointerInput(max) {
                     fun at(y: Float) = Math.round((1f - (y / size.height).coerceIn(0f, 1f)) * max)
@@ -247,8 +252,10 @@ object VolumeBar {
                     fun at(y: Float) = Math.round((1f - (y / size.height).coerceIn(0f, 1f)) * max)
                     detectVerticalDragGestures { change, _ -> onLevel(at(change.position.y)) }
                 }, contentAlignment = Alignment.BottomCenter) {
-                Box(Modifier.fillMaxWidth().fillMaxHeight(if (max > 0) level / max.toFloat() else 0f)
-                    .background(androidx.compose.ui.graphics.Color(app.wayfinder.ui.IisuLook.SLIDER), CapsuleShape))
+                // iiSU's slider, standing: filled from the bottom, a dot per step, the bar thumb across
+                androidx.compose.foundation.Canvas(Modifier.matchParentSize()) {
+                    iisuSlider(if (max > 0) level / max.toFloat() else 0f, max + 1, g.dark, 0f, size.height, vertical = true)
+                }
             }
             Icon(when (VolumeRules.speaker(level, max)) {
                 VolumeRules.Speaker.OFF -> Icons.Rounded.VolumeOff
@@ -265,7 +272,7 @@ object VolumeBar {
     @Composable
     private fun Wide(card: RoundedCornerShape, onRingerMode: (Int) -> Unit) {
         val g = LocalGlass.current
-        Column(Modifier.padding(8.dp).width(360.dp).glassSurface(g, card, well = g.surfaceModal, veil = false).padding(18.dp),
+        Column(Modifier.padding(8.dp).width(360.dp).glassSurface(g, card, well = menuCard(g), veil = false).padding(18.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Text("Sound", color = g.textPrimary, style = MaterialTheme.typography.titleMedium)
             // the ringer mode: three tiles, icon and word; the chosen one in the selection gradient (no tick mark)
@@ -296,7 +303,7 @@ object VolumeBar {
         }
     }
 
-    /** iiSU's slider, sized for a finger: its name and value above, a 28 dp track filled in iiSU's slider colour, a bar thumb. */
+    /** A volume in iiSU's slider, sized for a finger: its name and value above. */
     @Composable
     private fun BigSlider(label: String, value: Int, onChange: (Int) -> Unit) {
         val g = LocalGlass.current
@@ -306,24 +313,10 @@ object VolumeBar {
                 Text(label, color = g.textPrimary, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
                 Text(volumeText(value), color = g.textSecondary, style = MaterialTheme.typography.bodyMedium)
             }
-            androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxWidth().height(40.dp)
-                .semantics { contentDescription = "$label: ${volumeText(value)}" }
-                .pointerInput(Unit) {
-                    fun at(x: Float) = Math.round((x / size.width).coerceIn(0f, 1f) * steps)
-                    detectTapGestures { onChange(at(it.x)); bump() }
-                }
-                .pointerInput(Unit) {
-                    fun at(x: Float) = Math.round((x / size.width).coerceIn(0f, 1f) * steps)
-                    detectHorizontalDragGestures { change, _ -> onChange(at(change.position.x)); bump() }
-                }, contentAlignment = Alignment.CenterStart) {
-                val f = value.coerceIn(0, steps) / steps.toFloat()
-                Box(Modifier.fillMaxWidth().height(28.dp).clip(CapsuleShape).background(g.textTertiary.copy(alpha = 0.18f))) {
-                    Box(Modifier.fillMaxHeight().fillMaxWidth(f).background(androidx.compose.ui.graphics.Color(app.wayfinder.ui.IisuLook.SLIDER)))
-                }
-                // the thumb: a white bar a little taller than the track, as iiSU's
-                Box(Modifier.padding(start = (maxWidth - 8.dp) * f).width(8.dp).fillMaxHeight()
-                    .background(androidx.compose.ui.graphics.Color.White, RoundedCornerShape(4.dp))
-                    .border(1.dp, g.textTertiary.copy(alpha = 0.35f), RoundedCornerShape(4.dp)))
+            // iiSU's slider (GlassSlider draws it): its dots, the bar thumb, ◂ ▸ to step
+            app.wayfinder.ui.GlassSlider(value.coerceIn(0, steps) / steps.toFloat(),
+                Modifier.semantics { contentDescription = "$label: ${volumeText(value)}" }, step = 1f / steps, height = 44.dp) { v ->
+                onChange(Math.round(v * steps)); bump()
             }
         }
     }
