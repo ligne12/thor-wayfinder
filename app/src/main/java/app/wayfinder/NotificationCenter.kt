@@ -87,6 +87,14 @@ object NotificationCenter {
 
     val isOpen: Boolean get() = view != null
 
+    // each app's name and icon, read once (a card read them again each time it scrolled into view)
+    private val apps = HashMap<String, Pair<String, androidx.compose.ui.graphics.ImageBitmap?>>()
+    private fun appOf(ctx: Context, pkg: String) = apps.getOrPut(pkg) {
+        val pm = ctx.packageManager
+        (runCatching { pm.getApplicationLabel(pm.getApplicationInfo(pkg, 0)).toString() }.getOrDefault(pkg)) to
+            runCatching { pm.getApplicationIcon(pkg).toBitmap(96, 96).asImageBitmap() }.getOrNull()
+    }
+
     /** Opens it on the top screen; false if the window couldn't be added (Android's shade is given back then). */
     fun show(service: AccessibilityService): Boolean {
         if (view != null) { shown = true; return true }
@@ -241,9 +249,7 @@ object NotificationCenter {
     @Composable
     private fun Card(ctx: Context, n: NotifItem) {
         val g = LocalGlass.current
-        val pm = ctx.packageManager
-        val appName = remember(n.pkg) { runCatching { pm.getApplicationLabel(pm.getApplicationInfo(n.pkg, 0)).toString() }.getOrDefault(n.pkg) }
-        val icon = remember(n.pkg) { runCatching { pm.getApplicationIcon(n.pkg).toBitmap(96, 96).asImageBitmap() }.getOrNull() }
+        val (appName, icon) = remember(n.pkg) { appOf(ctx, n.pkg) }
         val now = System.currentTimeMillis()
         // under a minute: Android's own "now" (its shade's word, in the system's language), not "0 minutes ago"
         val age = if (now - n.postTime < DateUtils.MINUTE_IN_MILLIS) nowWord()

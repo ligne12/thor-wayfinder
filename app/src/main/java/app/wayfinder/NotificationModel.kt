@@ -18,6 +18,14 @@ object NotificationModel {
         return items.filterNot { it.summary && it.group in withChildren }.sortedByDescending { it.postTime }
     }
 
+    /** A notification posted (or updated): it replaces the one with its key in place, else it is added. */
+    fun upsert(items: List<NotifItem>, item: NotifItem): List<NotifItem> =
+        if (items.any { it.key == item.key }) items.map { if (it.key == item.key) item else it } else items + item
+
+    /** A notification removed: the list without it. */
+    fun remove(items: List<NotifItem>, key: String): List<NotifItem> =
+        if (items.none { it.key == key }) items else items.filterNot { it.key == key }
+
     /** "Clear notifications" has something to clear (ongoing ones stay). */
     fun anyClearable(items: List<NotifItem>): Boolean = items.any { it.clearable }
 }

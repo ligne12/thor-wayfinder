@@ -316,7 +316,15 @@ object PanelShortcuts {
                 tile("saver", "Not while charging", false, disabled = true) {
                     Overlays.pill("Android doesn't allow Battery saver while charging", Overlays.panelOrigin()) }
             else switch("saver", pm?.isPowerSaveMode == true) { "cmd power set-mode ${if (it) 1 else 0}" }),
-            "dark" to switch("dark", night) { "cmd uimode night ${if (it) "yes" else "no"}" },
+            // iiSU fork: AYN's Quickstep crashes whenever the system theme changes (its Recents activity, always preloaded,
+            // unregisters on destroy a receiver it never registered). Its process killed and the theme changed in one root
+            // command: the change lands in the ~200 ms before Quickstep, restarted at once, preloads that activity again
+            "dark" to tile("dark", onOff(night), night) {
+                Thread {
+                    PServiceBridge.exec("kill -9 \$(pidof com.android.launcher3); cmd uimode night ${if (!night) "yes" else "no"}")
+                }.apply { isDaemon = true }.start()
+                refresh(500); refresh(1500)
+            },
             "night" to switch("night", sec("night_display_activated", 0) == 1) { "settings put secure night_display_activated ${if (it) 1 else 0}" },
             "dim" to switch("dim", sec("reduce_bright_colors_activated", 0) == 1) { "settings put secure reduce_bright_colors_activated ${if (it) 1 else 0}" },
             "invert" to switch("invert", sec("accessibility_display_inversion_enabled", 0) == 1) { "settings put secure accessibility_display_inversion_enabled ${if (it) 1 else 0}" },

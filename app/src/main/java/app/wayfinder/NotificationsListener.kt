@@ -11,8 +11,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 
 /**
- * iiSU fork: Wayfinder reads the notifications for its notification center ([NotificationCenter]). The list is read again,
- * whole, whenever one comes or goes; the center acts through the companion (main thread; nothing while not connected).
+ * iiSU fork: Wayfinder reads the notifications for its notification center ([NotificationCenter]). The list is read whole
+ * once connected, then only the one that comes or goes changes it; the center acts through the companion (main thread;
+ * nothing while not connected).
  * Access is granted once through the root service ([ensureAccess]).
  */
 class NotificationsListener : NotificationListenerService() {
@@ -24,12 +25,24 @@ class NotificationsListener : NotificationListenerService() {
         @Volatile private var live: NotificationsListener? = null
         private val main = android.os.Handler(android.os.Looper.getMainLooper())
 
+        @Volatile private var rebindAt = 0L
+
         /**
-         * Asks Android to bind the listener again when it isn't connected: its first connection after the access was
-         * granted came over a minute late on the Thor, and nothing reaches it until then.
+         * The listener not connected when the center opens (its first connection after the access was granted came over a
+         * minute late on the Thor): its access taken back and given again through root — what brought it on the device
+         * (Android 13's requestRebind does nothing for a listener that wasn't unbound first). Once a minute at most.
          */
         fun reconnectIfNeeded(ctx: Context) {
-            if (live == null) runCatching { requestRebind(ComponentName(ctx.applicationContext, NotificationsListener::class.java)) }
+            if (live != null) return
+            val now = android.os.SystemClock.uptimeMillis()
+            if (now - rebindAt < 60_000) return
+            rebindAt = now
+            val me = ComponentName(ctx.applicationContext, NotificationsListener::class.java).flattenToString()
+            Thread {
+                if (!PServiceBridge.isAvailable()) return@Thread
+                PServiceBridge.exec("cmd notification disallow_listener $me")
+                PServiceBridge.exec("cmd notification allow_listener $me")
+            }.apply { isDaemon = true; name = "notif-rebind" }.start()
         }
 
         /** Its app, as a tap on the notification opens it; gone after if the app asked so (auto-cancel). */
@@ -48,9 +61,11 @@ class NotificationsListener : NotificationListenerService() {
         /** The notification's button [index] (one without a written reply). */
         fun act(key: String, index: Int) { send(live?.find(key)?.notification?.actions?.getOrNull(index)?.actionIntent) }
 
-        // an app may have cancelled it meanwhile: nothing then
+        // an app may have cancelled it meanwhile: nothing then. An app it opens comes up on the top screen, the center's
         private fun send(pi: PendingIntent?) {
-            try { pi?.send() } catch (e: PendingIntent.CanceledException) { android.util.Log.w(TAG, "cancelled intent") }
+            val ctx = live ?: return
+            val onTop = android.app.ActivityOptions.makeBasic().setLaunchDisplayId(0).toBundle()
+            try { pi?.send(ctx, 0, null, null, null, null, onTop) } catch (e: PendingIntent.CanceledException) { android.util.Log.w(TAG, "cancelled intent") }
         }
 
         /** Grants Wayfinder notification access through the root service, once (off the main thread). */
@@ -79,14 +94,22 @@ class NotificationsListener : NotificationListenerService() {
 
     private fun find(key: String): StatusBarNotification? = runCatching { activeNotifications?.firstOrNull { it.key == key } }.getOrNull()
 
+    /** The whole list, read once the listener is connected; after that only what comes and goes changes it. */
     private fun reread() {
         val list = runCatching { activeNotifications?.map { toItem(it) } }.getOrNull().orEmpty()
-        android.util.Log.d(TAG, "items: ${list.map { it.key }}")
+        android.util.Log.d(TAG, "connected: ${list.size} notifications")
         main.post { items = list }
     }
 
     override fun onListenerConnected() { live = this; reread() }
-    override fun onListenerDisconnected() { if (live === this) live = null; main.post { items = emptyList() } }
-    override fun onNotificationPosted(sbn: StatusBarNotification?) = reread()
-    override fun onNotificationRemoved(sbn: StatusBarNotification?) = reread()
+    // an older instance going after a newer one connected leaves the newer one's list alone
+    override fun onListenerDisconnected() { if (live === this) { live = null; main.post { items = emptyList() } } }
+    override fun onNotificationPosted(sbn: StatusBarNotification?) {
+        val item = sbn?.let { runCatching { toItem(it) }.getOrNull() } ?: return
+        main.post { items = NotificationModel.upsert(items, item) }
+    }
+    override fun onNotificationRemoved(sbn: StatusBarNotification?) {
+        val key = sbn?.key ?: return
+        main.post { items = NotificationModel.remove(items, key) }
+    }
 }

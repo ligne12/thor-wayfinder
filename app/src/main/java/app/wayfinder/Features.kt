@@ -86,8 +86,9 @@ object Features {
         on.none { it } -> Preset.JUST_SCREENS
         else -> Preset.MIXED
     }
-    /** The parts "Just switching screens" turns off: more combos, the quick panel, Game controls, Keyboard & mouse, stick lights. */
-    fun parts(): List<Boolean> = listOf(moreCombos, AppSettings.aynButtonOurs, gameControls, deck, lights)
+    /** The parts "Just switching screens" turns off: more combos, the quick panel, Game controls, Keyboard & mouse, stick lights,
+     *  the notification center (iiSU fork). */
+    fun parts(): List<Boolean> = listOf(moreCombos, AppSettings.aynButtonOurs, gameControls, deck, lights, notifications)
     fun preset(): Preset = presetOf(parts())
     /** How many of the [parts] are on ("turns off 5 parts"). */
     fun partsOn(): Int = parts().count { it }

@@ -19,6 +19,16 @@ class NotificationModelTest {
         assertEquals(listOf("c", "b", "d"), NotificationModel.visible(items).map { it.key })   // "d": a summary alone stays
     }
 
+    @Test fun upsert_replacesByKeyOrAdds_remove_dropsByKey() {
+        val items = listOf(n("a", 1), n("b", 2))
+        assertEquals(listOf("a", "b", "c"), NotificationModel.upsert(items, n("c", 3)).map { it.key })
+        val updated = NotificationModel.upsert(items, n("a", 9))
+        assertEquals(listOf("a", "b"), updated.map { it.key })
+        assertEquals(9L, updated.first { it.key == "a" }.postTime)                  // the new one, in place
+        assertEquals(listOf("b"), NotificationModel.remove(items, "a").map { it.key })
+        assertEquals(items, NotificationModel.remove(items, "zz"))                  // not listed: unchanged
+    }
+
     @Test fun anyClearable_ignoresOngoing() {
         assertEquals(false, NotificationModel.anyClearable(listOf(n("a", 1, clearable = false))))
         assertEquals(true, NotificationModel.anyClearable(listOf(n("a", 1, clearable = false), n("b", 2))))

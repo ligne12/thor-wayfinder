@@ -1925,6 +1925,7 @@ class ForegroundAppService : AccessibilityService() {
         // the one tick restarted)
         handler.postDelayed({ runCatching { disableSelf() }.onFailure {
             Log.w(TAG, "disableSelf: $it"); turningOff = false; Setup.clearOffByUser(this@ForegroundAppService)
+            applyNotificationCenter()   // iiSU fork: Wayfinder stays — so does its notification center
             PadLayerCtl.resumeAfterOff(this@ForegroundAppService, send = true)
             handler.removeCallbacks(padProfileTick); handler.post(padProfileTick) } }, 1500)
     }
