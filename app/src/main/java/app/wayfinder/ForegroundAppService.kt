@@ -928,8 +928,10 @@ class ForegroundAppService : AccessibilityService() {
 
     /** iiSU fork: the notification center on (Features): Android's shade blocked, the top strip takes the swipe; off: Android's. */
     private fun applyNotificationCenter() {
-        if (Features.notifications) NotificationGesture.start(this) { Log.d(TAG, "notification center: pull") }
-        else NotificationGesture.stop(this)
+        if (Features.notifications) {
+            NotificationsListener.ensureAccess(this)
+            NotificationGesture.start(this) { Log.d(TAG, "notification center: pull") }
+        } else NotificationGesture.stop(this)
     }
 
     /** iiSU fork: when Recents was last left or found gone (the multitask shows only for a visit not over yet). */
