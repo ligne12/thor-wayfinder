@@ -909,7 +909,8 @@ class ForegroundAppService : AccessibilityService() {
         // build 18 (E8, ps-F3): X closes a card too (a Thor habit) — the hint names both; close all takes two presses
         val close = "${m(ThorButton.Y)} / ${m(ThorButton.X)}"
         // 1.3 (GitHub #13): full, compact (one slim line of symbols, no title) or off; top centre or a corner
-        when (AppSettings.recentsHint) {
+        // iiSU fork: no hint over the multitask (Thomas: hide it)
+        if (RecentsScreen.shownOn != displayId) when (AppSettings.recentsHint) {
             2 -> {}
             // build 18 (E4 addendum, MORE-D19): the symbols are drawn icons (FocusCue: CueIcons), never a typed ↗ × ⌂ ↩
             1 -> Overlays.held(Held.RECENTS, CueOrigin.Screen(displayId), emptyList(), listOf(
@@ -945,7 +946,8 @@ class ForegroundAppService : AccessibilityService() {
             RecentsSource.refreshAsync(this)
         } else RecentsSource.refreshAsync(this) { ok ->
             Log.d(TAG, "recents list: $ok, ${RecentsSource.tasks?.size} tasks")
-            if (ok && !RecentsSource.tasks.isNullOrEmpty() && recentsLeftAt < at) RecentsScreen.show(this, d, origin, always, other)
+            if (ok && !RecentsSource.tasks.isNullOrEmpty() && recentsLeftAt < at && RecentsScreen.show(this, d, origin, always, other))
+                Overlays.release(Held.RECENTS)   // the hint Android's Recents got meanwhile: none over the multitask
         }
     }
 
@@ -1155,11 +1157,7 @@ class ForegroundAppService : AccessibilityService() {
         val from = recentsFrom
         // iiSU fork: the multitask's own way back (the app left, else Android's Back once it has faded); Android's cards are
         // under it, a tap on one would land on the multitask. Opened from the Hub: the Hub, below, as before
-        if (recentsCovered() && from != WAYFINDER_ORIGIN) {
-            if (!RecentsScreen.back()) RecentsScreen.leave()
-            exitRecents()
-            return
-        }
+        if (recentsCovered() && from != WAYFINDER_ORIGIN) { RecentsScreen.leave(); return }   // the exit follows Recents' going
         // build 18 (E4, pF02): opened from Wayfinder — back to the Hub on that screen, its page and focus as they were (no
         // `page` extra: the running Hub comes forward)
         if (d != null && from == WAYFINDER_ORIGIN) {
@@ -1272,7 +1270,8 @@ class ForegroundAppService : AccessibilityService() {
             ThorButton.L1 -> recentsBrowse(-1)
             ThorButton.R1 -> recentsBrowse(1)
             ThorButton.SELECT -> recentsSelect(event, d)
-            ThorButton.START -> { exitRecents(); performGlobalAction(GLOBAL_ACTION_HOME) }
+            // iiSU fork: covered, the cover stays until the home is up (the exit follows), Android's Recents never shows
+            ThorButton.START -> { if (!recentsCovered()) exitRecents(); performGlobalAction(GLOBAL_ACTION_HOME) }
             ThorButton.B, ThorButton.BACK -> recentsGoBack()
             else -> {}
         }
