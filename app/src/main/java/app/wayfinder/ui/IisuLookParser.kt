@@ -19,6 +19,7 @@ object IisuLookParser {
             glassTint = (prefs["home_glass_tint_color_argb"] as? Long)?.toInt(),
             glassOutline = prefs["glass_outline_enabled"] as? Boolean,
             font = prefs["launcher_font_choice"] as? String,
+            ringTurns = prefs["focus_ring_animations_enabled"] as? Boolean,
         )
     }
 

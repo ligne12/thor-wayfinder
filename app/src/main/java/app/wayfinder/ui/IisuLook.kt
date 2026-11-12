@@ -15,20 +15,22 @@ data class IisuLook(
     val glassTint: Int? = null,       // ARGB, alpha = strength
     val glassOutline: Boolean? = null,
     val font: String? = null,
+    val ringTurns: Boolean? = null,   // Motion: the focus ring's gradient turns (iiSU's focus ring animation)
 ) {
     /** The four colours the theme builder takes (glassColorsFor's "your own colours" path), for the light or dark look. */
     fun colours(dark: Boolean): CustomColours {
         val opacity = (glassOpacity ?: if (dark) 0.60f else 0.72f).coerceIn(0f, 1f)
-        val plain = if (dark) 0xFF2B2B2BL else 0xFFFFFFFFL
+        // dark: measured on iiSU's dark settings and home (page #252525 to #2D2F34, cards #2B2C31)
+        val plain = if (dark) 0xFF2E2F34L else 0xFFFFFFFFL
         // the tint's alpha is its strength in iiSU (0 = untinted glass)
         val tint = glassTint?.let { TokenArgb.mix(plain, TokenArgb.of(it), (it ushr 24) / 255.0).toInt() } ?: plain.toInt()
         return CustomColours(
-            bg = if (dark) 0xFF1C1C20.toInt() else 0xFFF2F2F2.toInt(),
+            bg = if (dark) 0xFF26272B.toInt() else 0xFFF2F2F2.toInt(),
             card = (tint and 0x00FFFFFF) or (Math.round(opacity * 255) shl 24),
-            text = if (dark) 0xFFF2F2F2.toInt() else 0xFF4E4A56.toInt(),
+            text = if (dark) 0xFFF7F8FA.toInt() else 0xFF4E4A56.toInt(),
             accent = ACCENT, accent2 = ACCENT2,
             ring = (focus ?: FOCUS_DEFAULT) or 0xFF000000.toInt(),
-            outline = glassOutline ?: true,
+            outline = dark || (glassOutline ?: true),   // iiSU outlines every dark card whatever its glass setting
         )
     }
 

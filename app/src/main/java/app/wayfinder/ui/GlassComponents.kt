@@ -1,5 +1,6 @@
 package app.wayfinder.ui
 
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
@@ -162,8 +163,9 @@ fun GlassScreen(
         val floor = 0.42f - 0.24f * app.wayfinder.AppSettings.glassBlur
         // build 18 (A4): over a light app the light theme keeps more frost (a floor of 0.55), plus its wash at 25 %: a veil
         // that turns the hard edges behind into colour fields (ko-fi's buttons read as Wayfinder's). Dark keeps its numbers.
-        drawRect(if (g.dark) Color(0xFF06070F).copy(alpha = maxOf(0.72f - 0.62f * clear, floor))
-                 else Color(0xFFF3F4FA).copy(alpha = maxOf(0.64f - 0.56f * clear, 0.55f)))
+        // iiSU fork: the frost is the theme's own background (iiSU's greys), not Wayfinder's blue-black / blue-white
+        drawRect(if (g.dark) g.base.copy(alpha = maxOf(0.72f - 0.62f * clear, floor))
+                 else g.base.copy(alpha = maxOf(0.64f - 0.56f * clear, 0.55f)))
         if (!g.dark) drawRect(g.wash.copy(alpha = 0.25f))
         drawRect(g.scrim)
     }
@@ -213,6 +215,9 @@ private fun iisuDotPaint(density: Float, dark: Boolean): android.graphics.Paint 
         shader = android.graphics.BitmapShader(tile, android.graphics.Shader.TileMode.REPEAT, android.graphics.Shader.TileMode.REPEAT)
     }
 }
+
+/** iiSU fork: one turn of the focus ring's gradient ([focusIndicator]). */
+private const val RING_TURN_MS = 5840
 
 /**
  * The shared glass surface: translucent top-lit frost + specular rim (bright at
@@ -330,6 +335,12 @@ fun Modifier.focusIndicator(shape: Shape, inset: Boolean = false): Modifier = co
         }
     }
     val marginPx = with(density) { FOCUS_VIEW_MARGIN.toPx() }
+    // iiSU fork: iiSU's ring turns — its gradient goes round the element clockwise, one turn in 6 s, while it has the focus
+    // (measured on iiSU's home: a quarter turn in 1.46 s). Read in the draw phase only: it redraws the ring, nothing else.
+    val turn = if (on && IisuLookSource.current.ringTurns != false) androidx.compose.animation.core.rememberInfiniteTransition(label = "ring")
+        .animateFloat(0f, 1f, androidx.compose.animation.core.infiniteRepeatable(
+            androidx.compose.animation.core.tween(RING_TURN_MS, easing = androidx.compose.animation.core.LinearEasing)), label = "turn")
+    else null
     // b18r3 (P2-4, r1 BUG-1): the page's view of its focus ([FocusInView]: its header snap never undoes this bring) and where
     // this element is drawn (the bring's own coordinates)
     val page = LocalFocusInView.current
@@ -397,13 +408,19 @@ fun Modifier.focusIndicator(shape: Shape, inset: Boolean = false): Modifier = co
         .drawWithContent {
             drawContent()
             if (halo <= 0.01f) return@drawWithContent
-            // iiSU fork: iiSU's ring — 3 dp, its focus colour at the top fading to violet at the bottom
+            // iiSU fork: iiSU's ring — 3 dp, violet → blue → its focus colour across the element, the axis turning
             val stroke = (if (inset) 2.dp else 3.dp).toPx()
             val pad = if (inset) -stroke / 2f else 2.dp.toPx() + stroke / 2f
             val w = size.width + 2 * pad; val h = size.height + 2 * pad
             if (w <= 0f || h <= 0f) return@drawWithContent
             val outline = shape.createOutline(Size(w, h), layoutDirection, this)
-            translate(-pad, -pad) { drawOutline(outline, Brush.verticalGradient(listOf(g.focusRing, g.accent2), 0f, h), alpha = halo, style = Stroke(stroke)) }
+            val a = (Math.PI / 4 + 2 * Math.PI * (turn?.value ?: 0f)).toFloat()   // 0: violet top-left, focus colour bottom-right
+            val r = maxOf(w, h) / 2f
+            val d = androidx.compose.ui.geometry.Offset(kotlin.math.cos(a) * r, kotlin.math.sin(a) * r)
+            val c = androidx.compose.ui.geometry.Offset(w / 2f, h / 2f)
+            translate(-pad, -pad) {
+                drawOutline(outline, Brush.linearGradient(listOf(g.accent2, g.accent, g.focusRing), c - d, c + d), alpha = halo, style = Stroke(stroke))
+            }
         }
 }
 

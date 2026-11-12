@@ -20,7 +20,7 @@ class IisuLookTest {
     @Test fun parse_sampleLight_readsEveryField() {
         val look = IisuLookParser.parse(sample("sample-light.pb"))
         assertEquals(IisuLook(dark = false, focus = 0xFF699CA1.toInt(), glassOpacity = 0.45f, glassTint = 0xFF4D7CFE.toInt(),
-            glassOutline = false, font = "cal_sans"), look)
+            glassOutline = false, font = "cal_sans", ringTurns = true), look)
     }
 
     @Test fun parse_sampleDark_readsDark_andLeavesUnsetGlassNull() {

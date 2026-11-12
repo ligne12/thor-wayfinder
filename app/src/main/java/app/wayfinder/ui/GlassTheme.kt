@@ -268,7 +268,9 @@ fun glassColorsFor(dark: Boolean, black: Boolean, custom: CustomColours?): Glass
         scrim = Brush.verticalGradient(listOf(Color.Transparent, Color.Transparent)),
         panelFill = Brush.verticalGradient(listOf(card, card)),
         panelFillFocused = Brush.verticalGradient(listOf(card.copy(alpha = 1f).compositeOverSelf(text, 0.10f), card.compositeOverSelf(text, 0.06f))),
-        panel = card, rimTop = text.copy(alpha = if (custom.outline) 0.22f else 0f), rimBottom = text.copy(alpha = if (custom.outline) 0.08f else 0f),
+        // iiSU fork: on dark the rim is a light line (iiSU draws it on every dark card); on light the text's grey, as before
+        panel = card, rimTop = (if (lightBg) text else Color.White).copy(alpha = if (custom.outline) (if (lightBg) 0.22f else 0.30f) else 0f),
+        rimBottom = (if (lightBg) text else Color.White).copy(alpha = if (custom.outline) 0.08f else 0f),
         // build 18 (A24, MORE-D01): the secondary / tertiary text no fainter than reads on their card (4.5 / 3 : 1) — at a
         // fixed 0.82 / 0.58 the captions vanished on a low-contrast pair (blue text on cyan cards)
         textPrimary = text,
