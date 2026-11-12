@@ -48,16 +48,20 @@ object IisuLookSource {
      * Re-reads iiSU's settings if the file changed, off the main thread ([app.wayfinder.PServiceBridge.exec] blocks), read
      * only. Nothing readable (no root service, no file, not a preferences file): the last look stays.
      */
+    private fun log(what: String) { if (app.wayfinder.BuildConfig.DEBUG) android.util.Log.d("IisuLook", what) }
+
     fun refreshAsync() {
         if (!busy.compareAndSet(false, true)) return
         Thread {
             try {
-                if (!app.wayfinder.PServiceBridge.isAvailable()) return@Thread
+                if (!app.wayfinder.PServiceBridge.isAvailable()) { log("no root service"); return@Thread }
                 val stamp = app.wayfinder.PServiceBridge.exec("stat -c %Y-%s $FILE")?.trim().orEmpty()
-                if (stamp.isEmpty() || stamp == lastStamp) return@Thread
-                val b64 = app.wayfinder.PServiceBridge.exec("base64 $FILE") ?: return@Thread
+                if (stamp.isEmpty() || stamp == lastStamp) { log("stamp '$stamp' (last '$lastStamp')"); return@Thread }
+                val b64 = app.wayfinder.PServiceBridge.exec("base64 -w 0 $FILE") ?: return@Thread   // -w 0: the service returns the first line only
+                log("read ${b64.length} chars")
                 val bytes = runCatching { java.util.Base64.getMimeDecoder().decode(b64.trim()) }.getOrNull() ?: return@Thread
-                val look = IisuLookParser.parseOrNull(bytes) ?: return@Thread
+                val look = IisuLookParser.parseOrNull(bytes) ?: run { log("not a preferences file (${bytes.size} bytes)"); return@Thread }
+                log("look $look")
                 lastStamp = stamp
                 android.os.Handler(android.os.Looper.getMainLooper()).post {
                     current = look
