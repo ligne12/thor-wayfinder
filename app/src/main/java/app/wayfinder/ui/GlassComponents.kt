@@ -332,7 +332,9 @@ fun Modifier.focusIndicator(shape: Shape, inset: Boolean = false): Modifier = co
     val marginPx = with(density) { FOCUS_VIEW_MARGIN.toPx() }
     // iiSU fork: iiSU's ring turns — its gradient goes round the element clockwise, one turn in 6 s, while it has the focus
     // (measured on iiSU's home: a quarter turn in 1.46 s). Read in the draw phase only: it redraws the ring, nothing else.
-    val turn = if (on && IisuLookSource.current.ringTurns != false) androidx.compose.animation.core.rememberInfiniteTransition(label = "ring")
+    // only while its window has the focus: a Hub left on the other screen during play must not redraw every frame
+    val windowFocused = androidx.compose.ui.platform.LocalWindowInfo.current.isWindowFocused
+    val turn = if (on && windowFocused && IisuLookSource.current.ringTurns != false) androidx.compose.animation.core.rememberInfiniteTransition(label = "ring")
         .animateFloat(0f, 1f, androidx.compose.animation.core.infiniteRepeatable(
             androidx.compose.animation.core.tween(RING_TURN_MS, easing = androidx.compose.animation.core.LinearEasing)), label = "turn")
     else null

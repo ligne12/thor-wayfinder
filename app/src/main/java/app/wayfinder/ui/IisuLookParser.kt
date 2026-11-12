@@ -31,13 +31,14 @@ object IisuLookParser {
         fun varint(): Long {
             var r = 0L; var shift = 0
             while (true) {
-                val c = b[i++].toLong()                      // past the end: throws, caught in parseOrNull
+                require(i < end)                             // never into the next field's bytes
+                val c = b[i++].toLong()
                 r = r or ((c and 0x7F) shl shift); shift += 7
                 if (c >= 0) return r
                 require(shift < 70)
             }
         }
-        fun chunk(): Reader { val n = varint().toInt(); require(n >= 0 && i + n <= end); return Reader(b, i, i + n).also { i += n } }
+        fun chunk(): Reader { val n = varint(); require(n in 0..(end - i).toLong()); return Reader(b, i, i + n.toInt()).also { i += n.toInt() } }
         fun fixed32(): Int { require(i + 4 <= end); var v = 0; for (k in 0..3) v = v or ((b[i++].toInt() and 0xFF) shl (8 * k)); return v }
         fun text() = String(b, i, end - i, Charsets.UTF_8)
         fun skip(wire: Int) { when (wire) { 0 -> varint(); 1 -> { require(i + 8 <= end); i += 8 }; 2 -> chunk(); 5 -> fixed32(); else -> error("wire $wire") } }

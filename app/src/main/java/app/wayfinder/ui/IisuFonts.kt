@@ -26,8 +26,12 @@ object IisuFonts {
                     if (!(e.name.endsWith(".otf") || e.name.endsWith(".ttf")) || e.size > 2_000_000) continue
                     val bytes = z.getInputStream(e).use { it.readBytes() }
                     val name = familyName(bytes)?.takeIf { it.startsWith(family) } ?: continue
-                    val f = java.io.File(dir, name.replace(' ', '_') + "." + e.name.substringAfterLast('.'))
-                    if (f.length() != bytes.size.toLong()) f.writeBytes(bytes)
+                    // named after the entry (two weights can share a family name); replaced by a rename, never rewritten in place
+                    // (a loaded font maps its file)
+                    val f = java.io.File(dir, e.name.replace('/', '_'))
+                    if (f.length() != bytes.size.toLong()) {
+                        val tmp = java.io.File(dir, f.name + ".tmp"); tmp.writeBytes(bytes); tmp.renameTo(f)
+                    }
                     fonts += Font(f, weights.firstOrNull { name.endsWith(it.first) }?.second ?: FontWeight.Normal)
                 }
             }

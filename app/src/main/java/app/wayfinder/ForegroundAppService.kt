@@ -30,7 +30,7 @@ class ForegroundAppService : AccessibilityService() {
 
     companion object {
         /** iiSU fork: how long after a wake the windows may not be listed yet ([applyFps]). */
-        private const val WINDOWS_SETTLE_MS = 2500L
+        private const val WINDOWS_SETTLE_MS = 5000L   // Android waits up to 5 s for a display's windows
         private const val TAG = "ThorFgSvc"
         private const val PRIMARY_DISPLAY = 0   // built-in main (top) screen
 
@@ -3390,7 +3390,7 @@ class ForegroundAppService : AccessibilityService() {
     /** The app whose second screen covers [displayId] (see [coveredByPresentation]), "" if it can't be
      *  read, or null. */
     private fun presentationOwner(displayId: Int): String? = try {
-        if (MainActivity.companionShowing()) null
+        if (MainActivity.companionShowing() || settling()) null   // iiSU fork: no window lookup while the screens settle
         else {
             val known = setOf(AccessibilityWindowInfo.TYPE_APPLICATION, AccessibilityWindowInfo.TYPE_INPUT_METHOD,
                 AccessibilityWindowInfo.TYPE_SYSTEM, AccessibilityWindowInfo.TYPE_ACCESSIBILITY_OVERLAY,
@@ -3408,7 +3408,10 @@ class ForegroundAppService : AccessibilityService() {
         }
     } catch (e: Exception) { null }
 
-    private fun appOnDisplay(displayId: Int): String? = try {
+    /** iiSU fork: right after a wake or a connect, a window lookup can block the main thread for seconds ([applyFps]). */
+    private fun settling() = android.os.SystemClock.uptimeMillis() < windowsSettleUntil
+
+    private fun appOnDisplay(displayId: Int): String? = if (settling()) displayApps[displayId] else try {   // iiSU fork
         val wins = getWindowsOnAllDisplays().get(displayId)
         if (BuildConfig.DEBUG) Log.d(TAG, "appOnDisplay $displayId: " + wins?.joinToString { w ->
             "${w.type}/${w.layer}/${w.isActive}/${w.root?.packageName}" })
@@ -3425,8 +3428,10 @@ class ForegroundAppService : AccessibilityService() {
      * own Hub / panel covering a game (its window then counts as removed too), a
      * permission dialog, an unreadable window → keep it.
      */
+    private fun reconcileAfterSettle() { handler.postAtTime(reconcileGone, windowsSettleUntil) }
     private val reconcileGone = Runnable {
         if (swapInProgress || displayApps.isEmpty()) return@Runnable
+        if (settling()) { reconcileAfterSettle(); return@Runnable }   // iiSU fork: no window lookup while the screens settle
         val sparse = runCatching { getWindowsOnAllDisplays() }.getOrNull() ?: return@Runnable
         var changed = false
         for ((d, pkg) in displayApps.toMap()) {

@@ -121,6 +121,26 @@ class IisuLookTest {
         assertEquals(null, IisuFonts.familyName(ByteArray(40)))
     }
 
+    private fun argb(c: androidx.compose.ui.graphics.Color): Long = TokenArgb.of(
+        (Math.round(c.alpha * 255) shl 24) or (Math.round(c.red * 255) shl 16) or (Math.round(c.green * 255) shl 8) or Math.round(c.blue * 255))
+    /** [top] (with its alpha) over the opaque [under]. */
+    private fun over(top: androidx.compose.ui.graphics.Color, under: Long): Long =
+        TokenArgb.mix(under, argb(top) or 0xFF000000, top.alpha.toDouble())
+
+    @Test fun glass_textReadsOnTheBoxesAsDrawn() {
+        for (dark in listOf(false, true)) {
+            val g = IisuLook().glass(dark)
+            val box = over(g.panel, argb(g.base))                    // the veil over the background: what is drawn
+            assertTrue("secondary dark=$dark", TokenArgb.contrast(over(g.textSecondary, box), box) >= 4.5)
+            assertTrue("tertiary dark=$dark", TokenArgb.contrast(over(g.textTertiary, box), box) >= 3.0)
+        }
+    }
+
+    @Test fun glass_inkOnAccentReadsOnTheDrawnGradient_whateverTheSelectionColours() {
+        val g = IisuLook(focus = 0xFF1E3A8A.toInt(), focusSecondary = 0xFF6B21A8.toInt(), customGradient = true).glass(dark = false)
+        for (stop in g.accentStops) assertTrue("ink on $stop", TokenArgb.contrast(argb(g.onAccent), argb(stop) or 0xFF000000) >= 4.5)
+    }
+
     @Test fun themeMode_followsIisu_orTheSystem() {
         assertEquals(ThemeMode.DARK, IisuLook(dark = true).themeMode())
         assertEquals(ThemeMode.LIGHT, IisuLook(dark = false).themeMode())

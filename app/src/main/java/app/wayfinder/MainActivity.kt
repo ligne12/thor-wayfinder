@@ -479,6 +479,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        app.wayfinder.ui.IisuLookSource.refreshAsync(this)   // iiSU fork: the Hub is reused; iiSU may have changed meanwhile
         if (isFinishing) return   // this instance is being replaced on the other screen
         // An existing Hub task can be brought forward on the "wrong" screen too.
         if (relocateIfNeeded()) return

@@ -93,8 +93,20 @@ data class IisuLook(
         val veil = Color.Black.copy(alpha = 0.13f)
         val fill = Brush.verticalGradient(listOf(veil, veil))
         val (from, mid, to) = selection()
-        return base.copy(panelFill = fill, panelFillFocused = fill, panel = veil, ringStops = listOf(Color(to), Color(mid), Color(from)))
+        // text measured against the box as drawn (the veil over the background), not the card colour the builder knew
+        val box = TokenArgb.mix(TokenArgb.of(base.base.toArgbInt()), 0xFF000000, veil.alpha.toDouble())
+        val text = TokenArgb.of(base.textPrimary.toArgbInt())
+        // ink on the accent fills as drawn — the fixed gradient's stops (the accent itself only tints icons and words)
+        val fills = listOf(SKY, ACCENT, ACCENT2).map { TokenArgb.of(it) }
+        val ink = listOf(0xFF0A0C14, 0xFFFFFFFF).maxBy { c -> fills.minOf { TokenArgb.contrast(c, it) } }
+        return base.copy(panelFill = fill, panelFillFocused = fill, panel = veil, ringStops = listOf(Color(to), Color(mid), Color(from)),
+            textSecondary = base.textPrimary.copy(alpha = TokenArgb.minAlpha(text, box, 4.5, 0.82).toFloat()),
+            textTertiary = base.textPrimary.copy(alpha = TokenArgb.minAlpha(text, box, 3.0, 0.58).toFloat()),
+            onAccent = Color(ink.toInt()))
     }
+
+    private fun Color.toArgbInt(): Int =
+        (Math.round(alpha * 255) shl 24) or (Math.round(red * 255) shl 16) or (Math.round(green * 255) shl 8) or Math.round(blue * 255)
 
     /** Wayfinder's theme setting for this look: iiSU's light or dark, else the system's. */
     fun themeMode(): app.wayfinder.ThemeMode = when (dark) {
@@ -110,6 +122,7 @@ object IisuLookSource {
     var fontFamily by mutableStateOf<androidx.compose.ui.text.font.FontFamily?>(null)
         private set
     @Volatile private var fontFor: String? = "cal_sans"
+    @Volatile private var fontLoaded: androidx.compose.ui.text.font.FontFamily? = null
 
     private const val FILE = "/data/data/com.iisulauncher/files/datastore/launcher_settings.preferences_pb"
     private val busy = java.util.concurrent.atomic.AtomicBoolean(false)
@@ -127,18 +140,22 @@ object IisuLookSource {
         if (!busy.compareAndSet(false, true)) return
         Thread {
             try {
-                if (!app.wayfinder.PServiceBridge.isAvailable()) { log("no root service"); return@Thread }
-                val stamp = app.wayfinder.PServiceBridge.exec("stat -c %Y-%s $FILE")?.trim().orEmpty()
-                if (stamp.isEmpty() || stamp == lastStamp) { log("stamp '$stamp' (last '$lastStamp')"); return@Thread }
+                // nothing readable (no root service, no iiSU): the theme follows the system — the Hub has no theme choice
+                val toSystem = { android.os.Handler(android.os.Looper.getMainLooper()).post { app.wayfinder.AppSettings.setMode(app.wayfinder.ThemeMode.SYSTEM) } }
+                if (!app.wayfinder.PServiceBridge.isAvailable()) { log("no root service"); toSystem(); return@Thread }
+                // the inode too: DataStore replaces the file, and a colour change keeps its size
+                val stamp = app.wayfinder.PServiceBridge.exec("stat -c %Y-%s-%i $FILE")?.trim().orEmpty()
+                if (stamp.isEmpty()) { log("no iiSU settings"); lastStamp = ""; toSystem(); return@Thread }
+                if (stamp == lastStamp) return@Thread
                 val b64 = app.wayfinder.PServiceBridge.exec("base64 -w 0 $FILE") ?: return@Thread   // -w 0: the service returns the first line only
                 log("read ${b64.length} chars")
                 val bytes = runCatching { java.util.Base64.getMimeDecoder().decode(b64.trim()) }.getOrNull() ?: return@Thread
                 val look = IisuLookParser.parseOrNull(bytes) ?: run { log("not a preferences file (${bytes.size} bytes)"); return@Thread }
                 log("look $look")
                 lastStamp = stamp
-                val fontChanged = look.font != fontFor
-                val family = if (fontChanged) IisuFonts.load(appCtx, look.font) else fontFamily
-                fontFor = look.font
+                val family = if (look.font == fontFor) fontLoaded else IisuFonts.load(appCtx, look.font)
+                // a font iiSU has that couldn't be read now is tried again on the next read
+                if (family != null || look.font == null || look.font == "cal_sans") { fontFor = look.font; fontLoaded = family }
                 android.os.Handler(android.os.Looper.getMainLooper()).post {
                     current = look
                     fontFamily = family
