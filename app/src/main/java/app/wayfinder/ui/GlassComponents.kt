@@ -167,6 +167,13 @@ fun GlassScreen(
         if (!g.dark) drawRect(g.wash.copy(alpha = 0.25f))
         drawRect(g.scrim)
     }
+    // iiSU fork: iiSU's backdrop over whatever is drawn — its dot grid and a shade deepening toward the bottom
+    val density = androidx.compose.ui.platform.LocalDensity.current.density
+    val dots = remember(density, g.dark) { iisuDotPaint(density, g.dark) }
+    val iisuBackdrop: androidx.compose.ui.graphics.drawscope.DrawScope.() -> Unit = {
+        drawRect(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = if (g.dark) 0.10f else 0.045f))))
+        drawIntoCanvas { it.nativeCanvas.drawRect(0f, 0f, size.width, size.height, dots) }
+    }
     // build 18 (A14): the page's focused control's role, for its header's button legend (ButtonLegend.kt)
     val roles = remember { FocusRoleState() }
     androidx.compose.runtime.CompositionLocalProvider(LocalGlassBackdrop provides backdrop, LocalFocusRole provides roles) {
@@ -179,6 +186,7 @@ fun GlassScreen(
                 // refracted: apps never get those pixels. Panels still catch the light.)
                 backdrop.ready = false
                 realTint()
+                iisuBackdrop()
                 return@drawBehind
             }
             val t = clock?.value ?: 0f
@@ -186,12 +194,25 @@ fun GlassScreen(
                 backdrop.record(this) { drawAurora(t) }
                 drawIntoCanvas { it.nativeCanvas.drawRenderNode(backdrop.node) }
             } else drawAurora(t)
+            iisuBackdrop()
         }
     ) { content() }
     }
 }
 
 
+
+/** iiSU fork: iiSU's dot grid as a repeating tile — white dots of 1.3 dp every 6.7 dp (measured on its home screens).
+ *  One shader: the whole grid is a single drawRect. */
+private fun iisuDotPaint(density: Float, dark: Boolean): android.graphics.Paint {
+    val step = Math.round(6.7f * density).coerceAtLeast(4)
+    val tile = android.graphics.Bitmap.createBitmap(step, step, android.graphics.Bitmap.Config.ARGB_8888)
+    android.graphics.Canvas(tile).drawCircle(step / 2f, step / 2f, 0.65f * density,
+        android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { color = if (dark) 0x14FFFFFF else 0xFFFFFFFF.toInt() })
+    return android.graphics.Paint().apply {
+        shader = android.graphics.BitmapShader(tile, android.graphics.Shader.TileMode.REPEAT, android.graphics.Shader.TileMode.REPEAT)
+    }
+}
 
 /**
  * The shared glass surface: translucent top-lit frost + specular rim (bright at
