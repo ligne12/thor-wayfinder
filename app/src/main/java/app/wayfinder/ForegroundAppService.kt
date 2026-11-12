@@ -120,6 +120,8 @@ class ForegroundAppService : AccessibilityService() {
         fun controllerScreen(): Int? = instance?.controllerDisplay()
         /** iiSU fork: the running service, for windows only it may add ([VolumeBar]); null when it isn't running. */
         fun accessibility(): android.accessibilityservice.AccessibilityService? = instance
+        /** iiSU fork: the Hub's "Notification center" switch changed — block Android's shade and take the swipe, or give it back. */
+        fun notificationCenterChanged() { instance?.let { s -> s.handler.post { s.applyNotificationCenter() } } }
         /** iiSU fork: the screen that isn't [display] (the multitask's "move to the other screen"); null: none, or no service. */
         fun otherScreen(display: Int): Int? = instance?.let { if (display == PRIMARY_DISPLAY) it.secondDisplayId() else PRIMARY_DISPLAY }
         fun setScreenMode(mode: Int) { instance?.let { it.handler.post { it.applyScreenMode(mode) } } }
@@ -922,6 +924,12 @@ class ForegroundAppService : AccessibilityService() {
                 "Recent apps" to "", "◀ ▶" to "browse", m(ThorButton.A) to "open", close to "close",
                 select to "twice: close all", start to "home", m(ThorButton.B) to "back"), at = AppSettings.recentsHintAt, compact = true)
         }
+    }
+
+    /** iiSU fork: the notification center on (Features): Android's shade blocked, the top strip takes the swipe; off: Android's. */
+    private fun applyNotificationCenter() {
+        if (Features.notifications) NotificationGesture.start(this) { Log.d(TAG, "notification center: pull") }
+        else NotificationGesture.stop(this)
     }
 
     /** iiSU fork: when Recents was last left or found gone (the multitask shows only for a visit not over yet). */
@@ -1873,6 +1881,7 @@ class ForegroundAppService : AccessibilityService() {
     private fun turnOff() {
         if (turningOff) return                          // a second press while it goes
         turningOff = true
+        NotificationGesture.stop(this)                  // iiSU fork: Android's shade back while Wayfinder is off
         Setup.markOffByUser(this)
         // the tick's follow() would start the input layer again before we go (it flips after 1.5 s)
         handler.removeCallbacks(padProfileTick)
@@ -2083,6 +2092,7 @@ class ForegroundAppService : AccessibilityService() {
 
         ignoredPackages.add(packageName)
         Setup.clearOffByUser(this)                               // build 18 (GitHub #83): on again, however it was turned on
+        applyNotificationCenter()                                // iiSU fork: the swipe down opens Wayfinder's notification center
         app.wayfinder.deck.InputDeckOverlay.undoLeftover(this)   // 1.4 (GitHub #53)
         handler.postDelayed({ Dock.start(this) }, 1500)          // a TV / monitor: controllers + screens
         blanker = DisplayBlanker(this).also { b ->
@@ -2217,6 +2227,7 @@ class ForegroundAppService : AccessibilityService() {
         QuickPanelWindow.close()
         VolumeBar.close()   // and a held key's repeat
         RecentsScreen.close()
+        NotificationGesture.stop(this)   // iiSU fork: Android's shade back
         runCatching { unregisterReceiver(screenPowerReceiver) }
         runCatching { unregisterReceiver(packagesReceiver) }
         // every timer of this instance (the 500 ms profile tick, idle watcher, reconcilers…) and every

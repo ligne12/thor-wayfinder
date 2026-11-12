@@ -1999,6 +1999,9 @@ private fun FeaturesPage(myDisplayId: Int, onBack: () -> Unit, go: (String) -> U
             else "Off", checked = Features.deck, onChecked = { Features.enableDeck(it) })
         SettingCard("Stick lights", if (Features.lights) "Effects and colours for the lights around the sticks" else "Off — AYN's own lights, untouched",
             checked = Features.lights, onChecked = { Features.enableLights(ctx, it) })
+        // iiSU fork: off gives Android its own shade back
+        SettingCard("Notification center", if (Features.notifications) "iiSU's notification center on a swipe down from the top"
+            else "Off — Android's", checked = Features.notifications, onChecked = { Features.enableNotifications(it) })
     }
 
 /** The third-party notices (assets/THIRD_PARTY_NOTICES.txt — the same file as in the source repository). Build 18 (B11,

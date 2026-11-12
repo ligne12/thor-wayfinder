@@ -29,6 +29,9 @@ object Features {
     /** Stick lights: Wayfinder's effects (off = AYN's own lights, untouched). */
     var lights by mutableStateOf(true)
         private set
+    /** iiSU fork: Wayfinder's notification center on a swipe down from the top (off: Android's shade). */
+    var notifications by mutableStateOf(true)
+        private set
     /** The setup question was answered (the tour, or the card after an update). */
     var asked by mutableStateOf(true)
         private set
@@ -40,6 +43,7 @@ object Features {
         moreCombos = p.getBoolean("feat_combos", true)
         deck = p.getBoolean("feat_deck", true)
         lights = p.getBoolean("feat_lights", true)
+        notifications = p.getBoolean("feat_notifs", true)
         asked = p.getBoolean("setup_asked", false)
     }
 
@@ -49,6 +53,7 @@ object Features {
         lights = on; save("feat_lights", on)
         ForegroundAppService.reapplyLights()
     }
+    fun enableNotifications(on: Boolean) { notifications = on; save("feat_notifs", on); ForegroundAppService.notificationCenterChanged() }
     fun markAsked() { asked = true; save("setup_asked", true) }
     private fun save(k: String, v: Boolean) { prefs?.edit()?.putBoolean(k, v)?.apply() }
 
@@ -93,7 +98,7 @@ object Features {
         // what "Everything" puts back later
         if (PadLayerCtl.mode != PadLayerCtl.Mode.NOWHERE)
             prefs?.edit()?.putString("lite_layer_before", PadLayerCtl.mode.name)?.putBoolean("lite_sheet_before", AppSettings.controlsSheet)?.apply()
-        enableMoreCombos(false); enableDeck(false); enableLights(ctx, false)
+        enableMoreCombos(false); enableDeck(false); enableLights(ctx, false); enableNotifications(false)
         AppSettings.setAynButtonOursOn(false)
         PadLayerCtl.setMode(ctx, PadLayerCtl.Mode.NOWHERE)
         AppSettings.setControlsSheetOn(false)
@@ -102,7 +107,7 @@ object Features {
 
     /** "Everything": every part on; the input layer in the games you set up (or as it was, if it was on). */
     fun everything(ctx: Context) {
-        enableMoreCombos(true); enableDeck(true); enableLights(ctx, true)
+        enableMoreCombos(true); enableDeck(true); enableLights(ctx, true); enableNotifications(true)
         AppSettings.setAynButtonOursOn(true)
         AppSettings.setControlsSheetOn(prefs?.getBoolean("lite_sheet_before", true) ?: true)
         if (PadLayerCtl.mode == PadLayerCtl.Mode.NOWHERE) {
