@@ -94,11 +94,14 @@ object VolumeBar {
                 adjust(service, step, display)
                 // held: Android makes no repeats for a key the filter took, so the bar steps on as Android's would
                 stopRepeat()
+                val max = audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
+                var steps = 0
                 repeat = object : Runnable { override fun run() {
-                    val before = audio.getStreamVolume(AudioManager.STREAM_MUSIC)
                     adjust(service, step, display)
-                    // at an end (or after a lost up): stop
-                    if (audio.getStreamVolume(AudioManager.STREAM_MUSIC) != before)
+                    // at an end, or past the whole range (a lost up): stop. Not "the level didn't move": on the Thor it is
+                    // read back before the step lands, which stopped the repeat after one step
+                    val v = audio.getStreamVolume(AudioManager.STREAM_MUSIC)
+                    if ((if (dir > 0) v < max else v > 0) && ++steps < 2 * max)
                         main.postDelayed(this, android.view.ViewConfiguration.getKeyRepeatDelay().toLong())
                 } }.also { main.postDelayed(it, android.view.ViewConfiguration.getKeyRepeatTimeout().toLong()) }
                 true
@@ -120,8 +123,10 @@ object VolumeBar {
         }
     }
 
-    fun close() {
-        stopRepeat()
+    fun close() { stopRepeat(); removeBar() }
+
+    /** The window only: a held key's repeat goes on (a first press shows the bar after its repeat is set). */
+    private fun removeBar() {
         main.removeCallbacks(hide)
         val v = view ?: return
         runCatching { wm?.removeViewImmediate(v) }
@@ -148,7 +153,7 @@ object VolumeBar {
         read(service)
         if (view != null && shownOn == display) { bump(); return true }
         app.wayfinder.ui.IisuLookSource.refreshAsync(service)   // iiSU's theme, font, glass colour may have changed
-        close()   // one bar at a time: the controller moved to the other screen
+        removeBar()   // one bar at a time: the controller moved to the other screen
         val d = service.getSystemService(android.hardware.display.DisplayManager::class.java).getDisplay(display) ?: return false
         val ctx = android.view.ContextThemeWrapper(service.createDisplayContext(d), R.style.Theme_Wayfinder_Glass)
         val wm = ctx.getSystemService(android.view.WindowManager::class.java)
