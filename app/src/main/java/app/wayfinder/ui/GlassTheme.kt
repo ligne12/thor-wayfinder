@@ -36,18 +36,19 @@ object Glass {
 }
 
 /** dev build 17 (WP8): corner radii by role — a page never writes its own number (SourceRulesTest rule 5). */
+/** iiSU fork: iiSU's two radii — about 11 dp on its tiles, options and rows, 20 dp on its cards and sheets (measured). */
 object Radii {
     val Hairline = 2.dp   // underlines (popup tabs, controller tabs)
     val KeyCap = 10.dp    // a key or key-sized cell: Wayfinder keyboard, Game controls' key picker, the Test page's buttons
-    val Chip = 12.dp      // compact buttons and chips in dense places (GlassButton COMPACT, popup tabs, lists in popups)
-    val Control = 14.dp   // a control: option / segment, choice row, text field, notice, inner switch row, GlassButton REGULAR
-    val Row = 16.dp       // a page-level pill or row: Back pill, GlassListRow, header pill groups, listen / record buttons
+    val Chip = 10.dp      // compact buttons and chips in dense places (GlassButton COMPACT, popup tabs, lists in popups)
+    val Control = 11.dp   // a control: option / segment, choice row, text field, notice, inner switch row, GlassButton REGULAR
+    val Row = 11.dp       // a page-level pill or row: Back pill, GlassListRow, header pill groups, listen / record buttons
     val Card = 20.dp      // a setting card, a quick-panel card, an app row
-    val Action = 20.dp    // GlassActionButton tiles
-    val Tile = 20.dp      // the Hub's small tiles and strip, the combo capture card
+    val Action = 11.dp    // GlassActionButton tiles
+    val Tile = 11.dp      // the Hub's small tiles and strip, the combo capture card
     val Panel = 20.dp     // a panel (GlassPanel / FocusableGlass default), Game controls' drawing panel
     val Modal = 20.dp     // popups and sheets
-    val Large = 24.dp     // the Hub's menu cards, the tour card
+    val Large = 20.dp     // the Hub's menu cards, the tour card
     val Swatch = 24.dp    // a colour swatch's round glass (half its 48 dp)
     /** A fill drawn [by] inside a rounded element (DirArm's changed fill): its radius. */
     fun inset(outer: Dp, by: Dp = 2.dp) = outer - by
@@ -268,9 +269,9 @@ fun glassColorsFor(dark: Boolean, black: Boolean, custom: CustomColours?): Glass
         scrim = Brush.verticalGradient(listOf(Color.Transparent, Color.Transparent)),
         panelFill = Brush.verticalGradient(listOf(card, card)),
         panelFillFocused = Brush.verticalGradient(listOf(card.copy(alpha = 1f).compositeOverSelf(text, 0.10f), card.compositeOverSelf(text, 0.06f))),
-        // iiSU fork: on dark the rim is a light line (iiSU draws it on every dark card); on light the text's grey, as before
-        panel = card, rimTop = (if (lightBg) text else Color.White).copy(alpha = if (custom.outline) (if (lightBg) 0.22f else 0.30f) else 0f),
-        rimBottom = (if (lightBg) text else Color.White).copy(alpha = if (custom.outline) 0.08f else 0f),
+        // iiSU fork: iiSU's rim — a thin light line all round, white on light, light grey on dark and brighter at the bottom
+        panel = card, rimTop = Color.White.copy(alpha = if (!custom.outline) 0f else if (lightBg) 0.95f else 0.22f),
+        rimBottom = Color.White.copy(alpha = if (!custom.outline) 0f else if (lightBg) 0.95f else 0.34f),
         // build 18 (A24, MORE-D01): the secondary / tertiary text no fainter than reads on their card (4.5 / 3 : 1) — at a
         // fixed 0.82 / 0.58 the captions vanished on a low-contrast pair (blue text on cyan cards)
         textPrimary = text,

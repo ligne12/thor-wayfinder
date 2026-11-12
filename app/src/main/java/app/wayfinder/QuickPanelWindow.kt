@@ -726,8 +726,8 @@ private fun TileView(t: PanelTile, modifier: Modifier) {
     val g = LocalGlass.current
     // build 18 (E10, V05): an "on" tile is washed with the accent under its glass (its value was the only accent: blue words
     // barely read on the glass)
-    FocusableGlass(onClick = t.action, modifier = modifier.height(80.dp), radius = Radii.Row,   // iiSU fork: 64 → 80
-        well = if (t.on) g.accent.copy(alpha = 0.14f) else androidx.compose.ui.graphics.Color.Unspecified) {
+    // iiSU fork: 64 → 80 dp high; "on" is the accent icon, not a tinted tile
+    FocusableGlass(onClick = t.action, modifier = modifier.height(80.dp), radius = Radii.Row) {
         Column(Modifier.fillMaxSize().alpha(if (t.disabled) 0.5f else 1f).padding(horizontal = 4.dp, vertical = 4.dp),
             verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
             TileIcon(t.icon, t.pkg, if (t.on) g.accent else g.textSecondary, 24.dp)

@@ -251,11 +251,7 @@ fun Modifier.glassSurface(
     .then(if (well.isSpecified) Modifier.background(well, shape) else Modifier)
     .background(if (raised) g.panelFillFocused else g.panelFill, shape)
     .glassLight(shape, g.dark)
-    .border(
-        1.dp,
-        Brush.linearGradient(0f to g.rimTop, 0.42f to Color.Transparent, 1f to g.rimBottom),
-        shape,
-    )
+    .border(1.dp, Brush.verticalGradient(listOf(g.rimTop, g.rimBottom)), shape)   // iiSU fork: a line all round
 
 /** A static frosted glass panel (no interaction). */
 @Composable
@@ -888,7 +884,7 @@ fun GlassOption(text: String, selected: Boolean, onClick: () -> Unit, modifier: 
     // build 18 (A3): unselected, an opaque well under its glass — the app or the aurora behind can't tint it "half selected"
     FocusableGlass(onClick = onClick, modifier = modifier.focusProperties { canFocus = focusable }, radius = Radii.Control,
         focusRequester = focusRequester, focusId = focusId, contentAlignment = Alignment.Center,
-        well = if (selected) Color.Unspecified else g.optionWell, role = role) {
+        role = role) {   // iiSU fork: an option is the same glass as the rest
         val start = align == Alignment.Start
         Box(Modifier.fillMaxWidth().then(if (selected) Modifier.selectedFill(g, shape) else Modifier),
             contentAlignment = if (start) Alignment.CenterStart else Alignment.Center) {

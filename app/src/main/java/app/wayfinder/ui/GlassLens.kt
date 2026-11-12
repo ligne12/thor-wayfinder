@@ -59,7 +59,8 @@ val LocalGlassBackdrop = staticCompositionLocalOf<GlassBackdrop?> { null }
 /** Global switch (Appearance → Light refraction), mirrored from AppSettings. */
 object GlassLensConfig {
     var enabled by mutableStateOf(true)
-    val supported: Boolean get() = Build.VERSION.SDK_INT >= 33
+    // iiSU fork: iiSU has neither the specular bevel nor the refraction — off everywhere, so every surface reads the same
+    val supported: Boolean get() = false
 }
 
 private const val SDF = """
