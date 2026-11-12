@@ -255,7 +255,7 @@ private fun PanelBody(first: FocusRequester, close: () -> Unit) {
     GlassScreen(span = app.wayfinder.ui.AuroraSpan.BOTTOM) { Box(Modifier.fillMaxSize()) {
         Column(
             Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 8.dp).verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(7.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),   // iiSU fork: roomier, fills the bottom screen
         ) {
             // Edit mode arranges the shortcut tiles in place (like a home screen); B / Done leaves it.
             var editing by remember { mutableStateOf(false) }
@@ -273,7 +273,7 @@ private fun PanelBody(first: FocusRequester, close: () -> Unit) {
             if (editing) app.wayfinder.ui.BackLayer(onBack = { editing = false }) {
                 androidx.compose.runtime.CompositionLocalProvider(LocalHeaderBottom provides headerEnd) {
                     CardsEditor()
-                    ShortcutGridEditor(columns = 4, cellHeight = 64.dp)
+                    ShortcutGridEditor(columns = 4, cellHeight = 80.dp)
                 }
             } else {
                 // round 8: the cards the user picked, in their order (pencil → arrange)
@@ -726,11 +726,11 @@ private fun TileView(t: PanelTile, modifier: Modifier) {
     val g = LocalGlass.current
     // build 18 (E10, V05): an "on" tile is washed with the accent under its glass (its value was the only accent: blue words
     // barely read on the glass)
-    FocusableGlass(onClick = t.action, modifier = modifier.height(64.dp), radius = Radii.Row,
+    FocusableGlass(onClick = t.action, modifier = modifier.height(80.dp), radius = Radii.Row,   // iiSU fork: 64 → 80
         well = if (t.on) g.accent.copy(alpha = 0.14f) else androidx.compose.ui.graphics.Color.Unspecified) {
         Column(Modifier.fillMaxSize().alpha(if (t.disabled) 0.5f else 1f).padding(horizontal = 4.dp, vertical = 4.dp),
             verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
-            TileIcon(t.icon, t.pkg, if (t.on) g.accent else g.textSecondary, 20.dp)
+            TileIcon(t.icon, t.pkg, if (t.on) g.accent else g.textSecondary, 24.dp)
             // QA2: a label too wide for the tile (large font: "Keyboard &…") shrinks to fit instead of being cut. Build 18 (E2,
             // pF11): the catalog's names are longer ("Close background apps") — a tile without a value line wraps them on two
             // lines first; one with a value keeps one line (the 64 dp tile has no room for three)
