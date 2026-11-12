@@ -120,6 +120,8 @@ class ForegroundAppService : AccessibilityService() {
         fun controllerScreen(): Int? = instance?.controllerDisplay()
         /** iiSU fork: the running service, for windows only it may add ([VolumeBar]); null when it isn't running. */
         fun accessibility(): android.accessibilityservice.AccessibilityService? = instance
+        /** iiSU fork: the screen that isn't [display] (the multitask's "move to the other screen"); null: none, or no service. */
+        fun otherScreen(display: Int): Int? = instance?.let { if (display == PRIMARY_DISPLAY) it.secondDisplayId() else PRIMARY_DISPLAY }
         fun setScreenMode(mode: Int) { instance?.let { it.handler.post { it.applyScreenMode(mode) } } }
         /** QA2: bring a dark bottom screen back, whatever made it dark (Help → Fix). */
         fun repairBottomScreen() { instance?.repairBottom() }
@@ -865,7 +867,7 @@ class ForegroundAppService : AccessibilityService() {
         // The window list can lag the event a little: check now, and once more shortly after.
         if (!recentsStillOpen(displayId)) {
             if (!retry) handler.postDelayed({ enterRecents(displayId, retry = true) }, 350)
-            else Log.d(TAG, "recents: event on $displayId but not on top — ignored")
+            else { Log.d(TAG, "recents: event on $displayId but not on top — ignored"); recentsLeft() }   // a swipe that went home
             return
         }
         Log.d(TAG, "recents: enter on $displayId")
@@ -921,7 +923,33 @@ class ForegroundAppService : AccessibilityService() {
         }
     }
 
+    /** iiSU fork: when Recents was last left or found gone (the multitask shows only for a visit not over yet). */
+    @Volatile private var recentsLeftAt = 0L
+
+    private fun recentsLeft() { recentsLeftAt = android.os.SystemClock.uptimeMillis(); RecentsScreen.close() }
+
+    /**
+     * iiSU fork: Recents' window just showed on [d] — the multitask covers it ([RecentsScreen]). With a list already read it
+     * shows at once and the list is read again; the very first time it waits for the list, and shows only if this visit of
+     * Recents isn't over by then. The app left: the one our RECENTS noted (not a home, not the Hub), else the screen's app.
+     */
+    private fun coverRecents(d: Int) {
+        val at = android.os.SystemClock.uptimeMillis()
+        val asked = recentsOrigin?.takeIf { at - recentsOriginAt < 3000 && it != HOME_ORIGIN && it != WAYFINDER_ORIGIN }
+        val origin = asked ?: displayApps[d]
+        val always = launcherPackages.toSet() + packageName
+        val other = { (if (d == PRIMARY_DISPLAY) secondDisplayId() else PRIMARY_DISPLAY)?.let { displayApps[it] } }
+        if (!RecentsSource.tasks.isNullOrEmpty()) {
+            RecentsScreen.show(this, d, origin, always, other)
+            RecentsSource.refreshAsync(this)
+        } else RecentsSource.refreshAsync(this) { ok ->
+            Log.d(TAG, "recents list: $ok, ${RecentsSource.tasks?.size} tasks")
+            if (ok && !RecentsSource.tasks.isNullOrEmpty() && recentsLeftAt < at) RecentsScreen.show(this, d, origin, always, other)
+        }
+    }
+
     private fun exitRecents() {
+        recentsLeft()
         val d = recentsDisplay ?: return
         Log.d(TAG, "recents: exit")
         recentsDisplay = null
@@ -2171,6 +2199,7 @@ class ForegroundAppService : AccessibilityService() {
         inputDeck?.hide()
         QuickPanelWindow.close()
         VolumeBar.close()   // and a held key's repeat
+        RecentsScreen.close()
         runCatching { unregisterReceiver(screenPowerReceiver) }
         runCatching { unregisterReceiver(packagesReceiver) }
         // every timer of this instance (the 500 ms profile tick, idle watcher, reconcilers…) and every
@@ -2285,8 +2314,7 @@ class ForegroundAppService : AccessibilityService() {
                 // the watch took Recents (a "launcher" package) for a frontend covering the moved app and brought that app back
                 // over it; and once Recents was left for the home or another card, the next look would bring it back again
                 swapWatchGen++
-                // iiSU fork: the multitask's list and pictures (root, off the main thread)
-                RecentsSource.refreshAsync(this) { ok -> Log.d(TAG, "recents list: $ok, ${RecentsSource.tasks?.size} tasks") }
+                coverRecents(displayId ?: focusedDisplayId())   // iiSU fork: the multitask over it, at once
                 enterRecents(displayId ?: focusedDisplayId())
             } else if (recentsDisplay != null) for (ms in listOf(250L, 900L)) handler.postDelayed({
                 // twice: Recents can still be animating out at the first look
