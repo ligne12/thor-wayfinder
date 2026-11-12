@@ -169,8 +169,8 @@ object RecentsScreen {
         wm = null; owner = null; service = null
     }
 
-    /** A tap beside the cards, or Back: the app left, else Android's own Back on Recents. */
-    private fun leave() {
+    /** A tap beside the cards, or Back: the app left, else Android's own Back on Recents (sent once this has faded). */
+    fun leave() {
         if (back()) return
         val s = service
         close()

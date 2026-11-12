@@ -1146,9 +1146,19 @@ class ForegroundAppService : AccessibilityService() {
     }
     @Volatile private var lastHatX = 0
 
+    /** iiSU fork: the multitask covers Recents on its screen — the controller drives the carousel, not Android's cards. */
+    private fun recentsCovered(): Boolean = recentsDisplay != null && RecentsScreen.shownOn == recentsDisplay
+
     private fun recentsGoBack() {
         val d = recentsDisplay
         val from = recentsFrom
+        // iiSU fork: the multitask's own way back (the app left, else Android's Back once it has faded); Android's cards are
+        // under it, a tap on one would land on the multitask. Opened from the Hub: the Hub, below, as before
+        if (recentsCovered() && from != WAYFINDER_ORIGIN) {
+            if (!RecentsScreen.back()) RecentsScreen.leave()
+            exitRecents()
+            return
+        }
         // build 18 (E4, pF02): opened from Wayfinder — back to the Hub on that screen, its page and focus as they were (no
         // `page` extra: the running Hub comes forward)
         if (d != null && from == WAYFINDER_ORIGIN) {
@@ -1187,6 +1197,7 @@ class ForegroundAppService : AccessibilityService() {
     private var browseQueued = 0
 
     private fun recentsBrowse(dir: Int) {
+        if (recentsCovered()) { RecentsScreen.browse(dir); return }   // iiSU fork
         if (browseBusy) { browseQueued = (browseQueued + dir).coerceIn(-3, 3); return }
         val d = recentsDisplay ?: return
         val (w, h) = recentsSize(d) ?: return
@@ -1249,13 +1260,14 @@ class ForegroundAppService : AccessibilityService() {
         if (event.repeatCount > 0) return b in recentsDowns
         recentsDowns.add(b)
         when (b) {
-            ThorButton.A -> {                                                          // open the middle card
+            ThorButton.A -> if (recentsCovered()) RecentsScreen.openSelected() else {  // open the middle card
                 val d = recentsDisplay
                 val card = d?.let { centredCard(it) }
                 // 1.4 (GitHub #68): a real tap on it, never the accessibility click (it froze Recents)
                 if (d == null || card == null || !tapRecentsCard(d, card)) recentsGesture(0.50f, 0.48f, 0.50f, 0.48f, 40)
             }
-            ThorButton.Y, ThorButton.X -> recentsGesture(0.50f, 0.50f, 0.50f, 0.04f, 160)   // swipe it away
+            ThorButton.Y, ThorButton.X -> if (recentsCovered()) RecentsScreen.closeSelected()
+                else recentsGesture(0.50f, 0.50f, 0.50f, 0.04f, 160)   // swipe it away
             ThorButton.L1 -> recentsBrowse(-1)
             ThorButton.R1 -> recentsBrowse(1)
             ThorButton.SELECT -> recentsSelect(event, d)
@@ -1277,7 +1289,8 @@ class ForegroundAppService : AccessibilityService() {
         val now = android.os.SystemClock.uptimeMillis()
         if (ClearAll.second(recentsClearAt, now)) {
             recentsClearAt = 0L
-            clickRecentsButton("com.android.launcher3:id/clear_all_button", "Clear all")
+            if (recentsCovered()) RecentsScreen.clearAll()   // iiSU fork: the multitask's (locks, the other screen's app kept)
+            else clickRecentsButton("com.android.launcher3:id/clear_all_button", "Clear all")
             return
         }
         recentsClearAt = now
