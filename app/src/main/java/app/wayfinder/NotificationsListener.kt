@@ -24,6 +24,14 @@ class NotificationsListener : NotificationListenerService() {
         @Volatile private var live: NotificationsListener? = null
         private val main = android.os.Handler(android.os.Looper.getMainLooper())
 
+        /**
+         * Asks Android to bind the listener again when it isn't connected: its first connection after the access was
+         * granted came over a minute late on the Thor, and nothing reaches it until then.
+         */
+        fun reconnectIfNeeded(ctx: Context) {
+            if (live == null) runCatching { requestRebind(ComponentName(ctx.applicationContext, NotificationsListener::class.java)) }
+        }
+
         /** Its app, as a tap on the notification opens it; gone after if the app asked so (auto-cancel). */
         fun open(key: String) {
             val s = live ?: return

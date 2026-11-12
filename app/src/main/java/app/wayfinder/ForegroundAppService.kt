@@ -930,7 +930,7 @@ class ForegroundAppService : AccessibilityService() {
     private fun applyNotificationCenter() {
         if (Features.notifications) {
             NotificationsListener.ensureAccess(this)
-            NotificationGesture.start(this) { Log.d(TAG, "notification center: pull") }
+            NotificationGesture.start(this) { NotificationCenter.show(this) }
         } else NotificationGesture.stop(this)
     }
 
@@ -2230,6 +2230,7 @@ class ForegroundAppService : AccessibilityService() {
         VolumeBar.close()   // and a held key's repeat
         RecentsScreen.close()
         NotificationGesture.stop(this)   // iiSU fork: Android's shade back
+        NotificationCenter.close()
         runCatching { unregisterReceiver(screenPowerReceiver) }
         runCatching { unregisterReceiver(packagesReceiver) }
         // every timer of this instance (the 500 ms profile tick, idle watcher, reconcilers…) and every

@@ -22,6 +22,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 
 /**
  * iiSU fork: the bricks of iiSU's panels — its settings' look — shared by the volume bar, the notification center and
@@ -49,6 +50,9 @@ fun IisuToggleTile(icon: ImageVector, label: String, on: Boolean, modifier: Modi
         horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
         val ink = if (on) g.onAccent else g.textPrimary
         Icon(icon, null, tint = ink, modifier = Modifier.size(24.dp))
-        Text(label, color = ink, style = MaterialTheme.typography.labelLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        // a low tile (the notification center's) takes a longer name on two smaller lines ("Do not disturb")
+        if (height < 72.dp) Text(label, color = ink, style = MaterialTheme.typography.labelMedium, maxLines = 2,
+            overflow = TextOverflow.Ellipsis, textAlign = androidx.compose.ui.text.style.TextAlign.Center, lineHeight = 13.sp)
+        else Text(label, color = ink, style = MaterialTheme.typography.labelLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
