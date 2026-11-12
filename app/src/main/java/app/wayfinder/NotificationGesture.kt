@@ -1,7 +1,6 @@
 package app.wayfinder
 
 import android.accessibilityservice.AccessibilityService
-import android.content.Context
 import android.view.MotionEvent
 import android.view.WindowManager
 
@@ -20,27 +19,35 @@ object NotificationGesture {
     private var wm: WindowManager? = null
     private var gen = 0
 
-    /** Blocks Android's shade and lays the strip; [onPull] runs (main thread) on a pull down from it. */
-    fun start(service: AccessibilityService, onPull: () -> Unit) {
+    /**
+     * Blocks Android's shade and lays the strip; [onPull] runs (main thread) on a pull down from it. No root yet (the root
+     * service can come up after Wayfinder at boot): tried again every 10 s for a minute.
+     */
+    fun start(service: AccessibilityService, attempt: Int = 0, onPull: () -> Unit) {
         val mine = ++gen
         root.execute {
             val ok = PServiceBridge.isAvailable() && PServiceBridge.exec("cmd statusbar send-disable-flag statusbar-expansion") != null
             main.post {
                 if (mine != gen) return@post   // stopped meanwhile: its own "none" follows this command
-                if (ok) addStrip(service, onPull) else android.util.Log.w(TAG, "no root: Android's shade stays")
+                if (ok) addStrip(service, onPull)
+                else {
+                    android.util.Log.w(TAG, "no root (attempt $attempt): Android's shade stays")
+                    if (attempt < 6) main.postDelayed({ if (mine == gen) start(service, attempt + 1, onPull) }, 10_000)
+                }
             }
         }
     }
 
     /** Takes the strip away and gives Android its shade back. */
-    fun stop(ctx: Context) {
+    fun stop() {
         gen++
         removeStrip()
         root.execute { PServiceBridge.exec("cmd statusbar send-disable-flag none") }
     }
 
     private fun addStrip(service: AccessibilityService, onPull: () -> Unit) {
-        if (strip != null) return
+        // a fresh strip each time: one left by an earlier service instance (a rebind) may already be gone from the screen
+        removeStrip()
         val d = service.getSystemService(android.hardware.display.DisplayManager::class.java).getDisplay(0) ?: return
         val ctx = service.createDisplayContext(d)
         val wm = ctx.getSystemService(WindowManager::class.java)
@@ -72,7 +79,7 @@ object NotificationGesture {
             title = "WayfinderPullDown"
         }
         runCatching { wm.addView(v, lp); strip = v; this.wm = wm }
-            .onFailure { android.util.Log.w(TAG, "strip: ${it.javaClass.simpleName}"); stop(service) }   // no strip: Android's shade back
+            .onFailure { android.util.Log.w(TAG, "strip: ${it.javaClass.simpleName}"); stop() }   // no strip: Android's shade back
     }
 
     private fun removeStrip() {

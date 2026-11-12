@@ -121,7 +121,11 @@ class ForegroundAppService : AccessibilityService() {
         /** iiSU fork: the running service, for windows only it may add ([VolumeBar]); null when it isn't running. */
         fun accessibility(): android.accessibilityservice.AccessibilityService? = instance
         /** iiSU fork: the Hub's "Notification center" switch changed — block Android's shade and take the swipe, or give it back. */
-        fun notificationCenterChanged() { instance?.let { s -> s.handler.post { s.applyNotificationCenter() } } }
+        fun notificationCenterChanged() {
+            val s = instance
+            if (s != null) s.handler.post { s.applyNotificationCenter() }
+            else if (!Features.notifications) NotificationGesture.stop()   // no service: the shade back all the same
+        }
         /** iiSU fork: the notification center went — the controller back where it was. */
         fun notificationCenterClosed() { instance?.let { s -> s.handler.post { s.onNotificationCenterClosed() } } }
         /** iiSU fork: the screen that isn't [display] (the multitask's "move to the other screen"); null: none, or no service. */
@@ -934,16 +938,23 @@ class ForegroundAppService : AccessibilityService() {
 
     /** iiSU fork: the notification center, with the controller on its screen (the top one) while it is open. */
     private fun openNotificationCenter() {
+        // never over a locked screen: the notifications' text and the switches stay behind the lock
+        if (getSystemService(android.app.KeyguardManager::class.java)?.isKeyguardLocked == true) return
         if (NotificationCenter.isOpen || !NotificationCenter.show(this)) return
         val from = controllerDisplay()
         notifReturnTo = from
         if (from != PRIMARY_DISPLAY) focusDisplay(PRIMARY_DISPLAY) { syncFocusModel() }
     }
 
+    /** As the quick panel's close: the screen lock wins (it was suspended while the center was open), else back where it was. */
     private fun onNotificationCenterClosed() {
         val back = notifReturnTo ?: return
         notifReturnTo = null
-        if (back != PRIMARY_DISPLAY && screenOn) handler.postDelayed({ focusDisplay(back) { syncFocusModel() } }, 150)
+        if (!screenOn) return
+        handler.postDelayed({
+            if (lockHolds()) applyFocusLock(announce = false)
+            else if (back != PRIMARY_DISPLAY) focusDisplay(back) { syncFocusModel() }
+        }, 150)
     }
 
     /** iiSU fork: the notification center on (Features): Android's shade blocked, the top strip takes the swipe; off: Android's. */
@@ -951,7 +962,7 @@ class ForegroundAppService : AccessibilityService() {
         if (Features.notifications) {
             NotificationsListener.ensureAccess(this)
             NotificationGesture.start(this) { openNotificationCenter() }
-        } else NotificationGesture.stop(this)
+        } else NotificationGesture.stop()
     }
 
     /** iiSU fork: when Recents was last left or found gone (the multitask shows only for a visit not over yet). */
@@ -1903,7 +1914,7 @@ class ForegroundAppService : AccessibilityService() {
     private fun turnOff() {
         if (turningOff) return                          // a second press while it goes
         turningOff = true
-        NotificationGesture.stop(this)                  // iiSU fork: Android's shade back while Wayfinder is off
+        NotificationGesture.stop()                      // iiSU fork: Android's shade back while Wayfinder is off
         Setup.markOffByUser(this)
         // the tick's follow() would start the input layer again before we go (it flips after 1.5 s)
         handler.removeCallbacks(padProfileTick)
@@ -2249,8 +2260,6 @@ class ForegroundAppService : AccessibilityService() {
         QuickPanelWindow.close()
         VolumeBar.close()   // and a held key's repeat
         RecentsScreen.close()
-        NotificationGesture.stop(this)   // iiSU fork: Android's shade back
-        NotificationCenter.close()
         runCatching { unregisterReceiver(screenPowerReceiver) }
         runCatching { unregisterReceiver(packagesReceiver) }
         // every timer of this instance (the 500 ms profile tick, idle watcher, reconcilers…) and every
@@ -2261,6 +2270,9 @@ class ForegroundAppService : AccessibilityService() {
         // every combo of the new one (release test 2026-09-24).
         val current = instance === this
         if (current) {
+            // iiSU fork: Android's shade back — only when no newer instance took over (it has blocked it and laid its strip)
+            NotificationGesture.stop()
+            NotificationCenter.close()
             // only when no newer instance took over (it had already started them: stopping here
             // killed its linked volume, and its lights — review 2026-09-25)
             LinkedVolume.stop()
@@ -3023,7 +3035,9 @@ class ForegroundAppService : AccessibilityService() {
     }
     /** A page that holds the controller against the lock is open (the Hub, Game controls) — one that took it from another screen
      *  (as [onHubShown]'s `ctl == d`): on the lock's own screen the lock keeps it there, and the focus follows any finger. */
-    private fun lockSuspended() = ControllerScreen.suspended(hubReturnTo != null, controlsReturnTo != null, controlsAside)
+    // iiSU fork: the notification center holds the controller on the top screen while open (a bottom lock would take it back)
+    private fun lockSuspended() = ControllerScreen.suspended(hubReturnTo != null, controlsReturnTo != null, controlsAside) ||
+        NotificationCenter.isOpen
 
     /** The panel closed: the controller (and its lock) go back where they were. */
     private fun onQuickPanelClosed() {
@@ -3625,6 +3639,7 @@ class ForegroundAppService : AccessibilityService() {
                 return
             }
             QuickPanelWindow.close()   // Home leaves the panel too (it's a drawer)
+            NotificationCenter.close()   // iiSU fork: and the notification center
             swapWatchGen++             // and the user's Home wins over a post-swap watch
             // Android's Home only knows the TOP screen: with the controller on the bottom one,
             // Home left that screen alone and sent the top one home (2026-09-24). Home

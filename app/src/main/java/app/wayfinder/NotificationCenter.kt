@@ -144,7 +144,7 @@ object NotificationCenter {
         } catch (t: Throwable) {
             owner.destroy()
             android.util.Log.w(TAG, "addView: ${t.javaClass.simpleName}: ${t.message}")
-            NotificationGesture.stop(service)   // no center: Android's shade back
+            NotificationGesture.stop()   // no center: Android's shade back
             false
         }
     }
@@ -251,6 +251,7 @@ object NotificationCenter {
         var slide by remember { mutableFloatStateOf(0f) }
         val shape = RoundedCornerShape(20.dp)
         val gate = remember { app.wayfinder.ui.ReleaseGate() }
+        val focus = androidx.compose.ui.platform.LocalFocusManager.current
         val open = { NotificationsListener.open(n.key); close() }
         Column(Modifier.fillMaxWidth()
             .graphicsLayer { translationX = slide; alpha = 1f - (kotlin.math.abs(slide) / size.width).coerceIn(0f, 1f) }
@@ -258,7 +259,11 @@ object NotificationCenter {
             // the controller: A opens (on its release), X clears it (an ongoing one stays)
             .onKeyEvent { e ->
                 if (e.key == androidx.compose.ui.input.key.Key.ButtonX) {
-                    if (e.type == androidx.compose.ui.input.key.KeyEventType.KeyDown && n.clearable) NotificationsListener.dismiss(n.key)
+                    if (e.type == androidx.compose.ui.input.key.KeyEventType.KeyDown && n.clearable) {
+                        // the next card takes the focus first (else it restarted at the first tile)
+                        if (!focus.moveFocus(androidx.compose.ui.focus.FocusDirection.Down)) focus.moveFocus(androidx.compose.ui.focus.FocusDirection.Up)
+                        NotificationsListener.dismiss(n.key)
+                    }
                     true
                 } else gate.onKey(e, open)
             }

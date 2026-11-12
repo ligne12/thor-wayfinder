@@ -84,6 +84,9 @@ object InputMonitorTool {
             } catch (_: Exception) {}
             Log.i("ThorInputTool", "app socket closed → exit")
             RootInjector.release()
+            // iiSU fork: Wayfinder gone (crashed, killed, uninstalled) — Android's shade back: Wayfinder's notification center
+            // blocked it and nothing else will unblock it (a restarted Wayfinder blocks it again)
+            runCatching { Runtime.getRuntime().exec(arrayOf("cmd", "statusbar", "send-disable-flag", "none")).waitFor() }
             runCatching { ExtPads.stopForExit() }
             runCatching { PadLayer.stopForExit() }
             // Wayfinder UNINSTALLED (not just restarting): its data folder disappears a moment after
