@@ -29,6 +29,13 @@ class RecentsModelTest {
         assertEquals(-1, RecentsModel.initial(emptyList(), "a"))
     }
 
+    @Test fun ramText_usedOfTotal_inGigabytes() {
+        // the Thor Max: MemTotal 15621188 kB, MemAvailable 10075500 kB
+        assertEquals("RAM 5.7 / 16.0 GB", RecentsModel.ramText(total = 15_996_096_512L, available = 10_317_312_000L))
+        assertEquals("RAM 0.0 / 8.0 GB", RecentsModel.ramText(total = 8_000_000_000L, available = 8_000_000_000L))
+        assertEquals("RAM 0.0 / 0.0 GB", RecentsModel.ramText(total = 0L, available = 5L))   // never negative
+    }
+
     @Test fun clearKeep_keepsLockedOtherScreenAndAlways() {
         assertEquals(setOf("lock.a", "other.b", "home.c", "app.wayfinder"),
             RecentsModel.clearKeep(setOf("lock.a"), "other.b", setOf("home.c", "app.wayfinder")))

@@ -285,7 +285,14 @@ object RecentsScreen {
                         items(list, key = { it.taskId }) { t -> Card(ctx, t, width(t), cardH, t.taskId == selectedId) }
                     }
                     Spacer(Modifier.height(28.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    // the memory in use, read again every second (closing apps frees it a moment later)
+                    val ram by produceState("") {
+                        val am = ctx.getSystemService(android.app.ActivityManager::class.java)
+                        val info = android.app.ActivityManager.MemoryInfo()
+                        while (true) { am.getMemoryInfo(info); value = RecentsModel.ramText(info.totalMem, info.availMem); kotlinx.coroutines.delay(1000) }
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text(ram, color = LocalGlass.current.textSecondary, style = MaterialTheme.typography.labelLarge)
                         GlassButton("Screenshot", { screenshot() })
                         GlassButton("Clear all", { clearAll() })
                     }

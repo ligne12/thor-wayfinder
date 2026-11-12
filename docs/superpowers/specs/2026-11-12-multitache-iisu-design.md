@@ -49,7 +49,7 @@ Un lancement de l'outil coûte quelques centaines de millisecondes ; c'est pourq
 - Un carrousel horizontal de grandes cartes, l'ordre d'Android : les plus anciennes à gauche. Au départ, la carte choisie est celle de l'appli quittée.
 - Une carte : l'aperçu dans une case aux coins `Radii.Card` ; au-dessus, l'icône et le nom de l'appli, le badge d'écran (« 1 » ou « 2 ») et le cadenas.
 - La carte choisie porte la bande de sélection animée d'iiSU (`focusIndicator`) et grandit de 3 %, comme dans iiSU.
-- En bas, deux boutons : « Capture d'écran » et « Tout effacer ».
+- En bas, la mémoire vive occupée pour donner un ordre d'idée (`RAM 8.0 / 16.0 GB`, relue chaque seconde ; demandé par Thomas pendant la réalisation), puis deux boutons : « Capture d'écran » et « Tout effacer ».
 - Les applis des deux écrans sont dans le carrousel ; le badge dit où chacune est. L'écran d'accueil, l'écran Récents lui-même et les tâches exclues des récents par Android n'y sont pas.
 
 ## Commandes

@@ -25,6 +25,10 @@ object RecentsModel {
     fun initial(ordered: List<RecentTask>, origin: String?): Int =
         ordered.indexOfLast { it.pkg == origin }.takeIf { it >= 0 } ?: ordered.lastIndex
 
+    /** The memory in use, for an idea of what closing apps would free (Thomas's ask): `RAM 5.7 / 16.0 GB` (10^9 bytes). */
+    fun ramText(total: Long, available: Long): String =
+        String.format(java.util.Locale.ROOT, "RAM %.1f / %.1f GB", (total - available).coerceAtLeast(0) / 1e9, total.coerceAtLeast(0) / 1e9)
+
     /** What "Clear all" keeps: the locked apps, the app shown on the other screen, and [always] (the homes, Wayfinder). */
     fun clearKeep(locked: Set<String>, otherScreenApp: String?, always: Set<String>): Set<String> =
         locked + always + listOfNotNull(otherScreenApp)

@@ -2074,7 +2074,7 @@ class ForegroundAppService : AccessibilityService() {
             flags = flags or
                     AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS or
                     AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS
-            notificationTimeout = 100
+            notificationTimeout = 0   // iiSU fork: Recents' window event at once — the multitask covers it sooner
         }
 
         ignoredPackages.add(packageName)
