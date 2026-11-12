@@ -230,6 +230,8 @@ fun Modifier.glassSurface(
     shape: androidx.compose.ui.graphics.Shape,
     raised: Boolean = false,
     well: Color = Color.Unspecified,
+    /** iiSU fork: false for a menu (iiSU's settings cards, the volume bar): the [well] alone, no home-tile veil over it. */
+    veil: Boolean = true,
 ): Modifier = this
     // iiSU fork: iiSU's tiles sit on a tight shadow just below. Drawn outside the shape only — an elevation shadow shows
     // through translucent glass and greys it.
@@ -249,7 +251,7 @@ fun Modifier.glassSurface(
     .clip(shape)
     .glassLens(shape)
     .then(if (well.isSpecified) Modifier.background(well, shape) else Modifier)
-    .background(if (raised) g.panelFillFocused else g.panelFill, shape)
+    .then(if (veil) Modifier.background(if (raised) g.panelFillFocused else g.panelFill, shape) else Modifier)
     // iiSU fork: iiSU's inner glow — a light band inside the edge, fading out over about 5 dp (measured: +40 % white at the
     // edge on light, +14 % on dark). Strokes on the clipped edge: only their inner half shows.
     .drawWithCache {

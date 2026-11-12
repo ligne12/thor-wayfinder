@@ -299,7 +299,7 @@ fun GlassSlider(value: Float, modifier: Modifier = Modifier, step: Float = 0.05f
             val r = h / 2f
             if (!enabled) return@Canvas             // A6: not known yet — the empty track only
             val x = r + (w - 2f * r) * value.coerceIn(0f, 1f)
-            drawRect(Brush.horizontalGradient(g.accentStops, endX = w), size = androidx.compose.ui.geometry.Size(x, h))
+            drawRect(Color(IisuLook.SLIDER), size = androidx.compose.ui.geometry.Size(x, h))   // iiSU fork: iiSU's slider fill
             val c = Offset(x, h / 2f)
             drawCircle(Color.Black.copy(alpha = 0.22f), r, c + Offset(1.dp.toPx(), 0f))   // soft edge on the track side
             drawCircle(Color.White, r - 0.5.dp.toPx(), c)

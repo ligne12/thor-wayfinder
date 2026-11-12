@@ -10,6 +10,8 @@ Quand on appuie sur les touches de volume, la barre d'Android 13 (pastille blanc
 
 - Verticale, au bord droit, centrée en hauteur : la place de la barre d'Android.
 - Contenu d'Android : le bouton de mode sonnerie (sonnerie, vibreur, silencieux), la jauge du volume média et le « … ».
+- « … » déploie la barre sur place en panneau latéral du son (pas le panneau rapide entier) : les trois modes en cases à icône, puis les volumes des deux écrans, du haut et du bas, en grands curseurs au style iiSU.
+- Dessinée comme les menus d'iiSU : carte pleine, coins de 20 dp, piste de curseur unie #72C5E4 (mesurée dans ses réglages).
 - Sur l'écran qui a la manette (le jeu).
 - Au toucher, comme celle d'Android. Un toucher à côté va au jeu. La manette reste au jeu, et le « … » ouvre le panneau rapide, pilotable à la manette.
 
@@ -20,7 +22,7 @@ Quand on appuie sur les touches de volume, la barre d'Android 13 (pastille blanc
 3. Dans la barre :
    - le bouton du haut fait tourner le mode sonnerie : sonnerie, puis vibreur, puis silencieux (`AudioManager.ringerMode`) ;
    - glisser sur la jauge règle le volume média ;
-   - « … » ferme la barre et ouvre le panneau rapide.
+   - « … » déploie la barre en panneau son, visible 5 s après le dernier toucher.
 4. La barre disparaît en fondu 1,5 s après la dernière pression ou le dernier toucher.
 5. La synchronisation existante du volume de l'écran du bas (`LinkedVolume`) suit d'elle-même : elle écoute les changements du volume média.
 6. Les touches de volume simulées par les contrôles de jeu (`deck/VirtualInput.kt`) passent par le même chemin.

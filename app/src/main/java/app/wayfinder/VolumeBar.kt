@@ -5,7 +5,9 @@ import android.content.Context
 import android.media.AudioManager
 import android.view.KeyEvent
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -52,11 +54,14 @@ import app.wayfinder.ui.glassSurface
 /**
  * iiSU fork: the volume bar. The volume keys set the media volume themselves (no FLAG_SHOW_UI: Android's bar stays away)
  * and this one shows instead, on the controller's screen, at the right edge where Android's was: the ringer mode, the
- * volume track (drag it), the speaker and the level, and "…" for the quick panel. It goes 1.5 s after the last press or
- * touch. Touch only, as Android's: a touch beside it goes to the game, and the controller stays with the game.
+ * volume track (tap or drag it), the speaker and the level, and "…" which widens it into a sound side panel (ringer mode
+ * and the volume of both screens, top, bottom). It is drawn as iiSU's menus are: a solid card, its 20 dp corners, its
+ * slider colour. It goes 1.5 s after the last press or touch (5 s when widened). Touch only, as Android's: a touch beside
+ * it goes to the game, and the controller stays with the game.
  */
 object VolumeBar {
     private const val HIDE_MS = 1500L
+    private const val HIDE_WIDE_MS = 5000L
     private val main = android.os.Handler(android.os.Looper.getMainLooper())
     private var view: android.view.View? = null
     private var wm: android.view.WindowManager? = null
@@ -65,6 +70,7 @@ object VolumeBar {
     private var level by mutableIntStateOf(0)
     private var max by mutableIntStateOf(15)
     private var ringer by mutableIntStateOf(AudioManager.RINGER_MODE_NORMAL)
+    private var wide by androidx.compose.runtime.mutableStateOf(false)
     private val hide = Runnable { fadeOut() }
 
     /** The accessibility service's key filter: true = consumed (the down and its up). */
@@ -92,7 +98,7 @@ object VolumeBar {
         val v = view ?: return
         runCatching { wm?.removeViewImmediate(v) }
         owner?.destroy()
-        view = null; wm = null; owner = null; shownOn = null
+        view = null; wm = null; owner = null; shownOn = null; wide = false
     }
 
     private fun read(ctx: Context) {
@@ -102,18 +108,23 @@ object VolumeBar {
         ringer = audio.ringerMode
     }
 
-    private fun bump() { main.removeCallbacks(hide); view?.animate()?.cancel(); view?.alpha = 1f; main.postDelayed(hide, HIDE_MS) }
+    private fun bump() {
+        main.removeCallbacks(hide); view?.animate()?.cancel(); view?.alpha = 1f
+        main.postDelayed(hide, if (wide) HIDE_WIDE_MS else HIDE_MS)
+    }
 
     private fun fadeOut() { view?.animate()?.alpha(0f)?.setDuration(150)?.withEndAction { close() }?.start() }
 
     /** Shows or updates the bar on [display]; false if the window couldn't be added. */
     private fun show(service: AccessibilityService, display: Int): Boolean {
         read(service)
+        app.wayfinder.ui.IisuLookSource.refreshAsync(service)   // iiSU's theme, font, glass colour may have changed
         if (view != null && shownOn == display) { bump(); return true }
         close()   // one bar at a time: the controller moved to the other screen
         val d = service.getSystemService(android.hardware.display.DisplayManager::class.java).getDisplay(display) ?: return false
         val ctx = android.view.ContextThemeWrapper(service.createDisplayContext(d), R.style.Theme_Wayfinder_Glass)
         val wm = ctx.getSystemService(android.view.WindowManager::class.java)
+        LinkedVolume.init(ctx)   // the wide form's per-screen sliders
         val owner = app.wayfinder.keyboard.ComposeOwner()
         val root = object : android.widget.FrameLayout(ctx) {
             override fun dispatchTouchEvent(ev: android.view.MotionEvent): Boolean { bump(); return super.dispatchTouchEvent(ev) }
@@ -121,7 +132,7 @@ object VolumeBar {
         owner.attach(root)
         root.addView(androidx.compose.ui.platform.ComposeView(ctx).apply {
             setContent {
-                ThorGlassTheme(dark = GlassTokens.isDark(ctx)) {
+                ThorGlassTheme(dark = GlassTokens.isDark(ctx)) { app.wayfinder.ui.CappedFontScale {
                     Bar(
                         onRinger = {
                             val audio = ctx.getSystemService(AudioManager::class.java)
@@ -133,9 +144,13 @@ object VolumeBar {
                             ctx.getSystemService(AudioManager::class.java).setStreamVolume(AudioManager.STREAM_MUSIC, v, 0)
                             read(ctx)
                         },
-                        onMore = { close(); QuickPanelWindow.show(service, display) },
+                        onRingerMode = { m ->
+                            runCatching { ctx.getSystemService(AudioManager::class.java).ringerMode = m }
+                            read(ctx)
+                        },
+                        onMore = { wide = true; bump() },
                     )
-                }
+                } }
             }
         })
         val lp = android.view.WindowManager.LayoutParams(
@@ -162,25 +177,21 @@ object VolumeBar {
     }
 
     @Composable
-    private fun Bar(onRinger: () -> Unit, onLevel: (Int) -> Unit, onMore: () -> Unit) {
+    private fun Bar(onRinger: () -> Unit, onLevel: (Int) -> Unit, onRingerMode: (Int) -> Unit, onMore: () -> Unit) {
         val g = LocalGlass.current
-        val card = RoundedCornerShape(Radii.Card)
-        // opaque under the glass, as Android's bar: a 13 % veil alone would vanish over a game
-        Column(Modifier.padding(8.dp).width(64.dp).glassSurface(g, card, well = g.surfaceModal).padding(vertical = 10.dp),
+        // iiSU's menus: a solid card (no home-tile veil: it would vanish over a game), 20 dp corners
+        val card = RoundedCornerShape(Radii.Modal)
+        if (wide) { Wide(card, onRingerMode); return }
+        Column(Modifier.padding(8.dp).width(68.dp).glassSurface(g, card, well = g.surfaceModal, veil = false).padding(vertical = 12.dp),
             horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            val ringerIcon = when (ringer) {
-                AudioManager.RINGER_MODE_VIBRATE -> Icons.Rounded.Vibration
-                AudioManager.RINGER_MODE_SILENT -> Icons.Rounded.NotificationsOff
-                else -> Icons.Rounded.NotificationsActive
-            }
-            val ringerName = when (ringer) { AudioManager.RINGER_MODE_VIBRATE -> "vibrate"; AudioManager.RINGER_MODE_SILENT -> "silent"; else -> "ring" }
-            Box(Modifier.size(44.dp).glassSurface(g, RoundedCornerShape(Radii.Control)).clickable(onClick = onRinger)
-                .semantics { contentDescription = "Ringer: $ringerName" }, contentAlignment = Alignment.Center) {
-                Icon(ringerIcon, null, tint = g.textPrimary, modifier = Modifier.size(22.dp))
+            Box(Modifier.size(44.dp).glassSurface(g, androidx.compose.foundation.shape.CircleShape, well = g.surfaceModal, veil = false)
+                .clickable(onClick = onRinger).semantics { contentDescription = "Ringer: ${ringerName(ringer)}" },
+                contentAlignment = Alignment.Center) {
+                Icon(ringerIcon(ringer), null, tint = g.textPrimary, modifier = Modifier.size(22.dp))
             }
             val pct = VolumeRules.percent(level, max)
-            // the track: filled from the bottom; a tap or a drag sets the level where the finger is
-            Box(Modifier.width(12.dp).height(160.dp).clip(CapsuleShape).background(g.textTertiary.copy(alpha = 0.22f))
+            // the track: iiSU's slider colour, filled from the bottom; a tap or a drag sets the level where the finger is
+            Box(Modifier.width(14.dp).height(160.dp).clip(CapsuleShape).background(g.textTertiary.copy(alpha = 0.18f))
                 .semantics { contentDescription = "Volume $pct %" }
                 .pointerInput(max) {
                     fun at(y: Float) = Math.round((1f - (y / size.height).coerceIn(0f, 1f)) * max)
@@ -191,7 +202,7 @@ object VolumeBar {
                     detectVerticalDragGestures { change, _ -> onLevel(at(change.position.y)) }
                 }, contentAlignment = Alignment.BottomCenter) {
                 Box(Modifier.fillMaxWidth().fillMaxHeight(if (max > 0) level / max.toFloat() else 0f)
-                    .background(Brush.verticalGradient(g.accentStops.reversed()), CapsuleShape))
+                    .background(androidx.compose.ui.graphics.Color(app.wayfinder.ui.IisuLook.SLIDER), CapsuleShape))
             }
             Icon(when (VolumeRules.speaker(level, max)) {
                 VolumeRules.Speaker.OFF -> Icons.Rounded.VolumeOff
@@ -199,8 +210,89 @@ object VolumeBar {
                 VolumeRules.Speaker.HIGH -> Icons.Rounded.VolumeUp
             }, null, tint = g.textPrimary, modifier = Modifier.size(22.dp))
             Text("$pct", color = g.textPrimary, style = MaterialTheme.typography.labelLarge)
-            Icon(Icons.Rounded.MoreHoriz, "More: quick panel", tint = g.textSecondary,
+            Icon(Icons.Rounded.MoreHoriz, "More sound", tint = g.textSecondary,
                 modifier = Modifier.size(36.dp).clip(CapsuleShape).clickable(onClick = onMore).padding(6.dp))
         }
+    }
+
+    /** "…": the bar widened into a sound side panel at the same edge — the ringer mode and the volume of each screen. */
+    @Composable
+    private fun Wide(card: RoundedCornerShape, onRingerMode: (Int) -> Unit) {
+        val g = LocalGlass.current
+        Column(Modifier.padding(8.dp).width(360.dp).glassSurface(g, card, well = g.surfaceModal, veil = false).padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            Text("Sound", color = g.textPrimary, style = MaterialTheme.typography.titleMedium)
+            // the ringer mode: three tiles, icon and word; the chosen one in the selection gradient (no tick mark)
+            androidx.compose.foundation.layout.Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                for (m in listOf(AudioManager.RINGER_MODE_NORMAL, AudioManager.RINGER_MODE_VIBRATE, AudioManager.RINGER_MODE_SILENT)) {
+                    val on = ringer == m
+                    val tile = RoundedCornerShape(16.dp)
+                    Column(Modifier.weight(1f).height(72.dp)
+                        .then(if (on) Modifier.clip(tile).background(Brush.linearGradient(g.accentStops), tile)
+                              else Modifier.glassSurface(g, tile, well = g.surfaceModal, veil = false))
+                        .clickable { onRingerMode(m) }
+                        .semantics { contentDescription = "Ringer: ${ringerName(m)}" },
+                        horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+                        val ink = if (on) g.onAccent else g.textPrimary
+                        Icon(ringerIcon(m), null, tint = ink, modifier = Modifier.size(24.dp))
+                        Text(ringerLabel(m), color = ink, style = MaterialTheme.typography.labelLarge)
+                    }
+                }
+            }
+            // the volumes, in iiSU's slider: flat fill, a bar for a thumb, big enough for a finger
+            var top by androidx.compose.runtime.remember { mutableIntStateOf(LinkedVolume.top()) }
+            var bottom by androidx.compose.runtime.remember { mutableIntStateOf(LinkedVolume.bottom()) }
+            val changed = LinkedVolume.changes.intValue
+            androidx.compose.runtime.LaunchedEffect(changed) { top = LinkedVolume.top(); bottom = LinkedVolume.bottom() }
+            BigSlider("Both screens", top) { t -> LinkedVolume.setBoth(t); top = t; bottom = (t + LinkedVolume.offset).coerceIn(0, 15) }
+            BigSlider("Top screen", top) { t -> LinkedVolume.setTopOnly(t); top = t }
+            BigSlider("Bottom screen", bottom) { b -> LinkedVolume.setBottomOnly(b); bottom = b }
+        }
+    }
+
+    /** iiSU's slider, sized for a finger: its name and value above, a 28 dp track filled in iiSU's slider colour, a bar thumb. */
+    @Composable
+    private fun BigSlider(label: String, value: Int, onChange: (Int) -> Unit) {
+        val g = LocalGlass.current
+        val steps = 15
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            androidx.compose.foundation.layout.Row(Modifier.fillMaxWidth()) {
+                Text(label, color = g.textPrimary, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+                Text(volumeText(value), color = g.textSecondary, style = MaterialTheme.typography.bodyMedium)
+            }
+            androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxWidth().height(40.dp)
+                .semantics { contentDescription = "$label: ${volumeText(value)}" }
+                .pointerInput(Unit) {
+                    fun at(x: Float) = Math.round((x / size.width).coerceIn(0f, 1f) * steps)
+                    detectTapGestures { onChange(at(it.x)); bump() }
+                }
+                .pointerInput(Unit) {
+                    fun at(x: Float) = Math.round((x / size.width).coerceIn(0f, 1f) * steps)
+                    detectHorizontalDragGestures { change, _ -> onChange(at(change.position.x)); bump() }
+                }, contentAlignment = Alignment.CenterStart) {
+                val f = value.coerceIn(0, steps) / steps.toFloat()
+                Box(Modifier.fillMaxWidth().height(28.dp).clip(CapsuleShape).background(g.textTertiary.copy(alpha = 0.18f))) {
+                    Box(Modifier.fillMaxHeight().fillMaxWidth(f).background(androidx.compose.ui.graphics.Color(app.wayfinder.ui.IisuLook.SLIDER)))
+                }
+                // the thumb: a white bar a little taller than the track, as iiSU's
+                Box(Modifier.padding(start = (maxWidth - 8.dp) * f).width(8.dp).fillMaxHeight()
+                    .background(androidx.compose.ui.graphics.Color.White, RoundedCornerShape(4.dp))
+                    .border(1.dp, g.textTertiary.copy(alpha = 0.35f), RoundedCornerShape(4.dp)))
+            }
+        }
+    }
+
+    private fun ringerLabel(mode: Int) = when (mode) {
+        AudioManager.RINGER_MODE_VIBRATE -> "Vibrate"; AudioManager.RINGER_MODE_SILENT -> "Silent"; else -> "Ring"
+    }
+
+    private fun ringerIcon(mode: Int) = when (mode) {
+        AudioManager.RINGER_MODE_VIBRATE -> Icons.Rounded.Vibration
+        AudioManager.RINGER_MODE_SILENT -> Icons.Rounded.NotificationsOff
+        else -> Icons.Rounded.NotificationsActive
+    }
+
+    private fun ringerName(mode: Int) = when (mode) {
+        AudioManager.RINGER_MODE_VIBRATE -> "vibrate"; AudioManager.RINGER_MODE_SILENT -> "silent"; else -> "ring"
     }
 }
