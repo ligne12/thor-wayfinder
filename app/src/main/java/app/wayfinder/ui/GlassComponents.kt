@@ -753,8 +753,12 @@ fun GlassListRow(
             }
             when (end) {
                 RowEnd.NONE -> {}
-                RowEnd.CHEVRON -> Icon(androidx.compose.material.icons.Icons.AutoMirrored.Rounded.KeyboardArrowRight, null,
-                    tint = g.textTertiary, modifier = Modifier.size(20.dp))
+                // iiSU fork: iiSU's "open" mark — a white chevron in a dark disc
+                RowEnd.CHEVRON -> Box(Modifier.size(26.dp).background(g.textPrimary, androidx.compose.foundation.shape.CircleShape),
+                    contentAlignment = Alignment.Center) {
+                    Icon(androidx.compose.material.icons.Icons.AutoMirrored.Rounded.KeyboardArrowRight, null,
+                        tint = if (g.dark) Color(0xFF1C1C20) else Color.White, modifier = Modifier.size(20.dp))
+                }
                 RowEnd.EXTERNAL -> Icon(androidx.compose.material.icons.Icons.AutoMirrored.Rounded.OpenInNew, null,
                     tint = g.textTertiary, modifier = Modifier.size(18.dp))
             }
@@ -803,12 +807,11 @@ internal object RowRules {
 fun SectionHeader(text: String, modifier: Modifier = Modifier) {
     val g = LocalGlass.current
     // dev build 15 (WP2): a hint in it ("… ✕ on the wheel …") draws PlayStation's marks as shapes
-    GlyphText(
-        text.uppercase(),
-        color = g.textTertiary,
-        style = androidx.compose.material3.MaterialTheme.typography.labelLarge,
-        modifier = modifier.padding(start = 6.dp, top = 8.dp, bottom = 6.dp),
-    )
+    // iiSU fork: iiSU's section title — its words, then a hairline to the edge
+    Row(modifier.padding(start = 6.dp, top = 8.dp, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+        GlyphText(text, color = g.textSecondary, style = androidx.compose.material3.MaterialTheme.typography.titleMedium)
+        Box(Modifier.padding(start = 12.dp).weight(1f).height(1.dp).background(g.textTertiary.copy(alpha = 0.35f)))
+    }
 }
 
 /** A small status pill: colored dot + text. */

@@ -2,6 +2,9 @@ package app.wayfinder.ui
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -26,8 +29,6 @@ import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.WarningAmber
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -114,12 +115,7 @@ fun GlassSwitchRow(title: String, checked: Boolean, onChecked: (Boolean) -> Unit
             }
             trailing()
             Spacer(Modifier.width(8.dp))
-            // build 18 (A16): the glass colours — Material's defaults drew a dark-purple knob in Dark, a navy one on Your own
-            // colours and a heavy outline when off (ComponentRulesTest: no Switch without colors)
-            Switch(checked = checked, onCheckedChange = null, modifier = Modifier.focusProperties { canFocus = false },
-                colors = SwitchDefaults.colors(checkedThumbColor = g.onAccent, checkedTrackColor = g.accent,
-                    checkedBorderColor = Color.Transparent, uncheckedThumbColor = g.textTertiary,
-                    uncheckedTrackColor = g.textTertiary.copy(alpha = 0.18f), uncheckedBorderColor = g.textTertiary.copy(alpha = 0.35f)))
+            IisuSwitch(checked)
         }
     }
     if (!inset) {
@@ -464,3 +460,18 @@ fun FieldLabel(text: String, modifier: Modifier = Modifier) =
 fun Caption(text: String, modifier: Modifier = Modifier, maxLines: Int = Int.MAX_VALUE) =
     GlyphText(text, modifier, color = LocalGlass.current.textTertiary, style = MaterialTheme.typography.bodySmall,
         maxLines = maxLines, overflow = if (maxLines == Int.MAX_VALUE) TextOverflow.Clip else TextOverflow.Ellipsis)
+
+/** iiSU fork: iiSU's switch — a pill track in its blue-to-violet gradient when on, a white knob with a faint violet ring.
+ *  Not focusable: the row around it is. */
+@Composable
+internal fun IisuSwitch(checked: Boolean) {
+    val g = LocalGlass.current
+    val at by androidx.compose.animation.core.animateFloatAsState(if (checked) 1f else 0f, label = "switch")
+    androidx.compose.foundation.layout.Box(Modifier.size(width = 52.dp, height = 30.dp)
+        .background(if (checked) Brush.linearGradient(listOf(g.accent, g.accent2)) else Brush.linearGradient(
+            listOf(g.textTertiary.copy(alpha = 0.22f), g.textTertiary.copy(alpha = 0.22f))), CapsuleShape)) {
+        androidx.compose.foundation.layout.Box(Modifier.padding(3.dp).offset(x = 22.dp * at).size(24.dp)
+            .background(Color.White, androidx.compose.foundation.shape.CircleShape)
+            .border(1.dp, g.accent2.copy(alpha = 0.25f * at), androidx.compose.foundation.shape.CircleShape))
+    }
+}
