@@ -42,12 +42,12 @@ object Radii {
     val Chip = 12.dp      // compact buttons and chips in dense places (GlassButton COMPACT, popup tabs, lists in popups)
     val Control = 14.dp   // a control: option / segment, choice row, text field, notice, inner switch row, GlassButton REGULAR
     val Row = 16.dp       // a page-level pill or row: Back pill, GlassListRow, header pill groups, listen / record buttons
-    val Card = 18.dp      // a setting card, a quick-panel card, an app row
+    val Card = 24.dp      // a setting card, a quick-panel card, an app row
     val Action = 20.dp    // GlassActionButton tiles
-    val Tile = 22.dp      // the Hub's small tiles and strip, the combo capture card
-    val Panel = 24.dp     // a panel (GlassPanel / FocusableGlass default), Game controls' drawing panel
-    val Modal = 24.dp     // popups and sheets
-    val Large = 26.dp     // the Hub's menu cards, the tour card
+    val Tile = 20.dp      // the Hub's small tiles and strip, the combo capture card
+    val Panel = 26.dp     // a panel (GlassPanel / FocusableGlass default), Game controls' drawing panel
+    val Modal = 26.dp     // popups and sheets
+    val Large = 28.dp     // the Hub's menu cards, the tour card
     val Swatch = 24.dp    // a colour swatch's round glass (half its 48 dp)
     /** A fill drawn [by] inside a rounded element (DirArm's changed fill): its radius. */
     fun inset(outer: Dp, by: Dp = 2.dp) = outer - by
@@ -128,12 +128,15 @@ val LocalGlass = staticCompositionLocalOf<GlassColors> { error("GlassColors not 
  */
 val LocalRealGlass = androidx.compose.runtime.compositionLocalOf { false }
 
+/** iiSU fork: iiSU's font for titles and labels; small text stays the system's. */
+private val CalSans = androidx.compose.ui.text.font.FontFamily(androidx.compose.ui.text.font.Font(app.wayfinder.R.font.cal_sans))
+
 private val GlassType = Typography(
-    headlineMedium = Typography().headlineMedium.copy(fontWeight = FontWeight.Bold, letterSpacing = (-0.5).sp),
-    titleLarge = Typography().titleLarge.copy(fontWeight = FontWeight.SemiBold, letterSpacing = (-0.3).sp),
-    titleMedium = Typography().titleMedium.copy(fontWeight = FontWeight.SemiBold),
+    headlineMedium = Typography().headlineMedium.copy(fontFamily = CalSans, fontWeight = FontWeight.Bold, letterSpacing = (-0.5).sp),
+    titleLarge = Typography().titleLarge.copy(fontFamily = CalSans, fontWeight = FontWeight.SemiBold, letterSpacing = (-0.3).sp),
+    titleMedium = Typography().titleMedium.copy(fontFamily = CalSans, fontWeight = FontWeight.SemiBold),
     bodyLarge = Typography().bodyLarge.copy(fontSize = 16.sp),
-    labelLarge = Typography().labelLarge.copy(fontWeight = FontWeight.SemiBold, letterSpacing = 0.6.sp),
+    labelLarge = Typography().labelLarge.copy(fontFamily = CalSans, fontWeight = FontWeight.SemiBold, letterSpacing = 0.6.sp),
 )
 
 /** [this] with [other] mixed in by [amount] (0–1). */
@@ -150,7 +153,8 @@ fun CappedFontScale(max: Float = 1.1f, content: @Composable () -> Unit) {
 }
 
 /** dev build 17 (WP8): "Your own colours" (AppSettings.customColours): background, cards, text, accent (ARGB). */
-class CustomColours(val bg: Int, val card: Int, val text: Int, val accent: Int)
+/** iiSU fork: [card] keeps its alpha (the glass opacity); [outline] = the glass rim. */
+class CustomColours(val bg: Int, val card: Int, val text: Int, val accent: Int, val outline: Boolean = true)
 
 /** dev build 17 (WP8): the theme's colours from its three inputs — the composable theme and (WP10) the overlays read this
  *  one answer. [custom] = "Your own colours" (null: off). */
@@ -246,7 +250,7 @@ fun glassColorsFor(dark: Boolean, black: Boolean, custom: CustomColours?): Glass
         scrim = Brush.verticalGradient(listOf(Color.Transparent, Color.Transparent)),
         panelFill = Brush.verticalGradient(listOf(card, card)),
         panelFillFocused = Brush.verticalGradient(listOf(card.copy(alpha = 1f).compositeOverSelf(text, 0.10f), card.compositeOverSelf(text, 0.06f))),
-        panel = card, rimTop = text.copy(alpha = 0.22f), rimBottom = text.copy(alpha = 0.08f),
+        panel = card, rimTop = text.copy(alpha = if (custom.outline) 0.22f else 0f), rimBottom = text.copy(alpha = if (custom.outline) 0.08f else 0f),
         // build 18 (A24, MORE-D01): the secondary / tertiary text no fainter than reads on their card (4.5 / 3 : 1) — at a
         // fixed 0.82 / 0.58 the captions vanished on a low-contrast pair (blue text on cyan cards)
         textPrimary = text,
@@ -276,16 +280,14 @@ object GlassTokens {
     }
     /** The colours a Wayfinder window on [ctx]'s display draws with — black and "Your own colours" included. */
     fun resolve(ctx: android.content.Context): GlassColors = isDark(ctx).let { dark ->
-        glassColorsFor(dark, dark && app.wayfinder.AppSettings.themeMode == app.wayfinder.ThemeMode.BLACK,
-            app.wayfinder.AppSettings.customColours())
+        glassColorsFor(dark, false, IisuLookSource.current.colours(dark))   // iiSU fork: the look comes from iiSU
     }
 }
 
 @Composable
 fun ThorGlassTheme(dark: Boolean, content: @Composable () -> Unit) {
     // dev build 17 (WP8): one builder (glassColorsFor) — WP10's overlays read the same answer
-    val colors = glassColorsFor(dark, dark && app.wayfinder.AppSettings.themeMode == app.wayfinder.ThemeMode.BLACK,
-        app.wayfinder.AppSettings.customColours())
+    val colors = glassColorsFor(dark, false, IisuLookSource.current.colours(dark))   // iiSU fork: the look comes from iiSU
     val scheme = if (colors.dark)
         darkColorScheme(primary = colors.accent, background = colors.base, surface = Color(0xFF161B3A))
     else

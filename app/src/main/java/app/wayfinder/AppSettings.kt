@@ -317,7 +317,7 @@ object AppSettings {
     fun customColours(): app.wayfinder.ui.CustomColours? =
         if (!customColors) null else app.wayfinder.ui.CustomColours(customBg, customCard, customText, customAccent)
     /** No glass: Black, or your own colours. */
-    val flatLook: Boolean get() = themeMode == ThemeMode.BLACK || customColors
+    val flatLook: Boolean get() = false   // iiSU fork: always glass; the look comes from iiSU (ui/IisuLook.kt)
 
     /** 3-finger gesture on the bottom screen blanks/wakes it (on the fly). */
     var gestureBlankMode by mutableStateOf(BlankGesture.TAP)
@@ -328,7 +328,7 @@ object AppSettings {
         if (initialized) return
         prefs = ctx.applicationContext.getSharedPreferences("thor_settings", Context.MODE_PRIVATE)
         themeMode = runCatching { ThemeMode.valueOf(prefs.getString("theme_mode", null) ?: "SYSTEM") }
-            .getOrDefault(ThemeMode.SYSTEM)
+            .getOrDefault(ThemeMode.SYSTEM).let { if (it == ThemeMode.BLACK) ThemeMode.DARK else it }   // iiSU fork: no Black
         hubOnTop = prefs.getBoolean("hub_on_top", true)
         backdrop = runCatching { Backdrop.valueOf(prefs.getString("backdrop", null) ?: "WALLPAPER") }.getOrDefault(Backdrop.WALLPAPER)
         refraction = prefs.getBoolean("refraction", true)

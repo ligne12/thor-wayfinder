@@ -610,9 +610,7 @@ private fun panelSummary(ctx: android.content.Context): String =
 /** More's Appearance row. Build 18 (B11, MORE-06): "Your own colours" while they're on (it named a theme that did nothing),
  *  "Black" alone (no glass backdrop there); (hF21) "what's behind", the backdrop's own words. */
 private fun appearanceSummary(): String = when {
-    AppSettings.customColors -> "Your own colours"
-    AppSettings.themeMode == ThemeMode.BLACK -> "Black"
-    else -> "${AppSettings.themeMode.name.lowercase().replaceFirstChar { it.uppercase() }} · ${if (AppSettings.backdrop == Backdrop.WALLPAPER) "what's behind" else "aurora"}"
+    else -> "Follows iiSU · ${if (AppSettings.backdrop == Backdrop.WALLPAPER) "what's behind" else "aurora"}"
 }
 
 /** Build 18 (B11, MORE-10): the Hub's More card — More's rows by their registry titles, lower case after the first
@@ -1313,26 +1311,8 @@ private fun AppearancePage(myDisplayId: Int, onBack: () -> Unit) {
         // build 18 (B16, MORE-D02): ONE look choice — the four themes and Your colours (a separate switch left a theme choice
         // that did nothing). Your colours keep the theme for later; a theme turns your colours off and keeps them. (B3): the
         // registry's cards (Search opens the page on them)
-        val own = AppSettings.customColors
-        SettingCard(NavCards.THEME, when {
-            own -> "Your own colours: a flat look — no glass, no blur (here, the quick panel and \"Your combos\")"
-            AppSettings.themeMode == ThemeMode.BLACK -> "Black: dark glass on pure black — OLED screens show true black and use less power (no aurora, no background blur)"
-            else -> "Light, dark or black glass, your own colours — or follow the system"     // (B11, MORE-20a)
-        }) {
-            GlassSegmentedControl(
-                listOf("System", "Light", "Dark", "Black", "Your colours"),
-                if (own) 4 else when (AppSettings.themeMode) { ThemeMode.SYSTEM -> 0; ThemeMode.LIGHT -> 1; ThemeMode.DARK -> 2; ThemeMode.BLACK -> 3 },
-                Modifier.fillMaxWidth(),
-            ) {
-                if (it == 4) AppSettings.setCustomColorsOn(true)
-                else {
-                    AppSettings.setCustomColorsOn(false)
-                    AppSettings.setMode(when (it) { 1 -> ThemeMode.LIGHT; 2 -> ThemeMode.DARK; 3 -> ThemeMode.BLACK; else -> ThemeMode.SYSTEM })
-                }
-            }
-            // the four colours in the Theme card while they're chosen — Search's "Your own colours" lands on them
-            if (own) CustomColorPickers(focusId = NavCards.OWN_COLOURS.id)
-        }
+        val own = false   // iiSU fork: no theme choice here
+        SettingCard(NavCards.THEME, "Follows iiSU: its theme, accent and glass (iiSU › Settings › Appearance › Style and Glass)")
         MoreOptions(cards = if (own) listOf(NavCards.HUB_SCREEN) else listOfNotNull(NavCards.BACKDROP, NavCards.SEE_THROUGH, NavCards.REFRACTION.takeIf { app.wayfinder.ui.GlassLensConfig.supported }, NavCards.HUB_SCREEN)) {
         // build 18 (B11, MORE-07): your colours have no glass — one line instead of three settings that change nothing
         if (own) Caption("Glass settings apply when Your own colours is off.")

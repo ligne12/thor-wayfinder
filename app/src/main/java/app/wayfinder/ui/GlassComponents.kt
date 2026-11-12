@@ -113,7 +113,8 @@ fun GlassScreen(
     val g = LocalGlass.current
     val realGlass = LocalRealGlass.current
     // The aurora animates every frame; with real glass there's nothing to animate.
-    val clock = if (realGlass) null else androidx.compose.runtime.produceState(android.os.SystemClock.uptimeMillis() / 1000f) {
+    val clock = if (realGlass || g.blobAlpha == 0f) null else   // iiSU fork: a flat fallback has nothing to animate
+        androidx.compose.runtime.produceState(android.os.SystemClock.uptimeMillis() / 1000f) {
         // The aurora drifts over tens of seconds: 30 fps looks identical to 120 and
         // costs a quarter of the GPU (it matters with refraction, which redraws
         // every panel through its lens on each aurora frame).
