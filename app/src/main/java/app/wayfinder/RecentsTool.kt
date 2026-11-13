@@ -77,6 +77,9 @@ object RecentsTool {
                 if (pkg != null && pkg in keep) { kept++; keptPkgs.append(pkg).append(' '); continue }
                 try { removeTask.invoke(atm, taskId); removed++; removedPkgs.append(pkg ?: "?").append(' ') } catch (_: Throwable) {}
             }
+            // iiSU fork: as Recents' own Clear all, the swipe's recents animation ends too ([cancelGesture]) — its app may just
+            // have closed, and left running, Recents' picture stays over the home that comes next
+            runCatching { cancelRecents(atm) }
             println("OK removed=$removed kept=$kept | removed:[${removedPkgs.trim()}] kept:[${keptPkgs.trim()}]")
             halt(0)
         } catch (t: Throwable) {
@@ -156,10 +159,15 @@ object RecentsTool {
         val binder = Class.forName("android.os.ServiceManager").getMethod("getService", String::class.java)
             .invoke(null, "activity_task") as? IBinder ?: return fail("activity_task unavailable")
         val atm = Class.forName("android.app.IActivityTaskManager\$Stub").getMethod("asInterface", IBinder::class.java).invoke(null, binder)!!
-        val cancel = atm.javaClass.methods.firstOrNull { it.name == "cancelRecentsAnimation" && it.parameterTypes.size == 1 }
-            ?: return fail("cancelRecentsAnimation not found; " + sig(atm, "Recents"))
-        cancel.invoke(atm, false)   // false: the tasks stay in the order they are in now
+        if (!cancelRecents(atm)) return fail("cancelRecentsAnimation not found; " + sig(atm, "Recents"))
         println("OK"); halt(0)
+    }
+
+    /** False: no such call on this Android. */
+    private fun cancelRecents(atm: Any): Boolean {
+        val cancel = atm.javaClass.methods.firstOrNull { it.name == "cancelRecentsAnimation" && it.parameterTypes.size == 1 } ?: return false
+        cancel.invoke(atm, false)   // false: the tasks stay in the order they are in now
+        return true
     }
 
     /** `shot <taskId> <dir>`: the task's full picture (the reduced one if that is all there is) as [dir]/shot.jpg. */

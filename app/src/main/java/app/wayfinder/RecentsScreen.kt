@@ -82,7 +82,7 @@ import app.wayfinder.ui.glassSurface
 object RecentsScreen {
     private const val FADE_MS = 150L
     /** Leaving for an app or the home: it is in the window list (Recents "gone") a moment before it is drawn. */
-    private const val SETTLE_MS = 250L
+    private const val SETTLE_MS = 200L
     private val main = android.os.Handler(android.os.Looper.getMainLooper())
     private var view: android.view.View? = null
     private var wm: WindowManager? = null
@@ -97,7 +97,7 @@ object RecentsScreen {
         private set
     private var selectedId by mutableIntStateOf(-1)
     private var removed by mutableStateOf<Set<Int>>(emptySet())   // closed cards, gone at once (before the list is read again)
-    private var leaving = false
+    private var leaving by mutableStateOf(false)
     private var clearArmed by mutableStateOf(false)   // the controller's first Select: "Clear all" asks for the second   // an app or the home is on its way: the cover waits for Recents to go (see [leaveVia])
 
     private val cards: List<RecentTask> get() = RecentsModel.order(RecentsSource.tasks.orEmpty()).filter { it.taskId !in removed }
@@ -270,7 +270,8 @@ object RecentsScreen {
         val here = shownOn ?: return
         val keep = RecentsModel.clearKeep(AppSettings.recentsLocked, otherScreenApps(), always).joinToString(",")
         leaveVia {
-            PServiceBridge.runEntryPoint(s, "RecentsTool", keep); goHome(s, here)
+            // the tool ends the swipe's animation itself (one root call less than [goHome]: the home comes sooner)
+            PServiceBridge.runEntryPoint(s, "RecentsTool", keep); PServiceBridge.goHomeOnDisplay(here, animate = false)
             main.post { RecentsSource.refreshAsync(s) }   // the next open starts from what is left
         }
     }
@@ -307,7 +308,8 @@ object RecentsScreen {
 
     @Composable
     private fun Screen(ctx: Context, display: Int) {
-        val list = cards
+        // on its way out the cards stay as they were: Clear all's list, read again meanwhile, emptied the screen before it went
+        val list = cards.let { live -> val frozen = remember(leaving) { live }; if (leaving) frozen else live }
         LaunchedEffect(list) {
             // nothing left to show: Android's own empty Recents — unless the last card was just closed (the home is coming)
             if (list.isEmpty()) { if (!leaving) close(); return@LaunchedEffect }
