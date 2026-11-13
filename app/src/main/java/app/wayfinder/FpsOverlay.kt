@@ -2,6 +2,7 @@ package app.wayfinder
 
 import android.graphics.PixelFormat
 import android.graphics.drawable.GradientDrawable
+import androidx.compose.ui.graphics.toArgb
 import android.hardware.display.DisplayManager
 import android.os.Handler
 import android.os.Looper
@@ -36,13 +37,16 @@ class FpsOverlay(private val service: android.accessibilityservice.Accessibility
         val dp = ctx.resources.displayMetrics.density
         val (padH, padV) = padDp(compact)
         val (mx, my) = marginDp(corner, compact)
+        val g = app.wayfinder.ui.GlassTokens.resolve(service)
         val tv = TextView(ctx).apply {
             text = "— FPS"
-            setTextColor(0xFFFFFFFF.toInt())
+            setTextColor(readingsColour(g.dark))
             setTextSize(TypedValue.COMPLEX_UNIT_SP, textSp(size))
-            typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.BOLD)
+            // iiSU fork (part 6): iiSU's font (Cal Sans), on iiSU's menu card
+            typeface = android.graphics.Typeface.create(runCatching { androidx.core.content.res.ResourcesCompat.getFont(service, R.font.cal_sans) }.getOrNull()
+                ?: android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD)
             setPadding((padH * dp).toInt(), (padV * dp).toInt(), (padH * dp).toInt(), (padV * dp).toInt())
-            background = GradientDrawable().apply { cornerRadius = radiusDp(compact)?.let { it * dp } ?: 999f; setColor(PILL) }
+            background = GradientDrawable().apply { cornerRadius = radiusDp(compact)?.let { it * dp } ?: 999f; setColor(cardColour(g)) }
         }
         val lp = WindowManager.LayoutParams(
             WindowManager.LayoutParams.WRAP_CONTENT, WindowManager.LayoutParams.WRAP_CONTENT,
@@ -66,12 +70,15 @@ class FpsOverlay(private val service: android.accessibilityservice.Accessibility
         if (fps < 0) return@post
         // 0 = the app drew nothing this second (a menu at rest) — not a problem, so grey.
         val head = if (fps == 0) "idle" else "$fps FPS"
-        val colour = rateColour(fps)
+        // iiSU fork (part 6): the theme now — it may have changed since the counter came up
+        val g = app.wayfinder.ui.GlassTokens.resolve(service)
+        (v.background as? GradientDrawable)?.setColor(cardColour(g))
+        val colour = rateColour(fps, g.dark)
         // round 8 levels: + battery (%, watts) · + temperatures — the extras in white, the rate in its colour
         val extra = Extras.text(service, AppSettings.fpsLevel, compact)
         v.text = android.text.SpannableString(head + extra).apply {
             setSpan(android.text.style.ForegroundColorSpan(colour), 0, head.length, 0)
-            if (extra.isNotEmpty()) setSpan(android.text.style.ForegroundColorSpan(READINGS), head.length, head.length + extra.length, 0)
+            if (extra.isNotEmpty()) setSpan(android.text.style.ForegroundColorSpan(readingsColour(g.dark)), head.length, head.length + extra.length, 0)
         }
     }
 
@@ -124,12 +131,16 @@ class FpsOverlay(private val service: android.accessibilityservice.Accessibility
             val sep = if (compact) " · " else "  ·  "
             return if (parts.isEmpty()) "" else sep + parts.joinToString(sep)
         }
-        /** The colours (ARGB): the pill, the readings after the rate. */
-        val PILL = 0x99000000.toInt()
-        val READINGS = 0xFFEDEDED.toInt()
-        /** The rate's colour: green ≥ 55, amber ≥ 28, red below; grey for idle (0). */
-        fun rateColour(fps: Int): Int = when {
-            fps == 0 -> 0xFFBBBBBB.toInt(); fps >= 55 -> 0xFF7CFFA0.toInt(); fps >= 28 -> 0xFFFFD166.toInt(); else -> 0xFFFF7B7B.toInt()
+        /** iiSU fork (part 6): its card — iiSU's menu card, light or dark with the theme (was 60 % black). */
+        fun cardColour(g: app.wayfinder.ui.GlassColors): Int = app.wayfinder.ui.menuCard(g).toArgb()
+        /** The readings after the rate, on that card (FpsOverlayTest: 4.5:1 at least). */
+        fun readingsColour(dark: Boolean): Int = if (dark) 0xFFEDEDED.toInt() else 0xFF4E4A56.toInt()
+        /** The rate's colour: green ≥ 55, amber ≥ 28, red below; grey for idle (0) — darker ones on the light card (3:1). */
+        fun rateColour(fps: Int, dark: Boolean): Int = when {
+            fps == 0 -> if (dark) 0xFFBBBBBB.toInt() else 0xFF6E7378.toInt()
+            fps >= 55 -> if (dark) 0xFF7CFFA0.toInt() else 0xFF1E7B3C.toInt()
+            fps >= 28 -> if (dark) 0xFFFFD166.toInt() else 0xFF9A5B00.toInt()
+            else -> if (dark) 0xFFFF7B7B.toInt() else 0xFFC0392B.toInt()
         }
     }
 }

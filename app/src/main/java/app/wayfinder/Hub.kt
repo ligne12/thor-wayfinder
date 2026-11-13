@@ -1169,8 +1169,8 @@ private fun FpsPreview() {
     val parts = (if (AppSettings.fpsLevel >= 1) listOf("87 % −6.2 W") else emptyList()) +
         (if (AppSettings.fpsLevel >= 2) listOf("CPU 52°", "GPU 48°") else emptyList())
     val text = buildAnnotatedString {
-        pushStyle(SpanStyle(color = Color(FpsOverlay.rateColour(60)))); append("60 FPS"); pop()
-        pushStyle(SpanStyle(color = Color(FpsOverlay.READINGS))); append(FpsOverlay.readings(parts, compact)); pop()
+        pushStyle(SpanStyle(color = Color(FpsOverlay.rateColour(60, g.dark)))); append("60 FPS"); pop()
+        pushStyle(SpanStyle(color = Color(FpsOverlay.readingsColour(g.dark)))); append(FpsOverlay.readings(parts, compact)); pop()
     }
     val pill = FpsOverlay.radiusDp(compact)?.let { RoundedCornerShape(it.dp) } ?: RoundedCornerShape(percent = 50)
     // the well is a screen's corner: the counter at its real distance from the side and from the edge (at the top, room
@@ -1183,8 +1183,8 @@ private fun FpsPreview() {
             Modifier.align(if (top) (if (left) Alignment.TopStart else Alignment.TopEnd) else (if (left) Alignment.BottomStart else Alignment.BottomEnd))
                 .padding(start = (if (left) mx else 0).dp, end = (if (left) 0 else mx).dp,
                     top = (if (top) my else well - my).dp, bottom = (if (top) well - my else my).dp)
-                .background(Color(FpsOverlay.PILL), pill).padding(horizontal = padH.dp, vertical = padV.dp),
-            fontSize = FpsOverlay.textSp(AppSettings.fpsSize).sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.SansSerif,
+                .background(Color(FpsOverlay.cardColour(g)), pill).padding(horizontal = padH.dp, vertical = padV.dp),
+            fontSize = FpsOverlay.textSp(AppSettings.fpsSize).sp, fontWeight = FontWeight.Bold, fontFamily = MaterialTheme.typography.bodyMedium.fontFamily,
             maxLines = 1, softWrap = false, style = androidx.compose.ui.text.TextStyle.Default)   // a TextView's line, not the page's
     }
 }

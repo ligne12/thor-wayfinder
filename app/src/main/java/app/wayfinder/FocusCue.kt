@@ -23,7 +23,6 @@ import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.DeleteSweep
 import androidx.compose.material.icons.rounded.Home
 import androidx.compose.ui.graphics.asAndroidPath
-import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.toArgb
 import app.wayfinder.ui.ButtonGlyphDrawable
 import app.wayfinder.ui.ButtonLetterDrawable
@@ -211,16 +210,18 @@ class FocusCue(private val service: AccessibilityService, private val ctlDisplay
         val g = GlassTokens.resolve(ctx)
         val ink = g.textPrimary.toArgb()
         val soft = g.textSecondary.toArgb()
-        // build 18 (E6, MORE-21): a table (the held list, a tip, Recents' hint) sits on the opaque sheet colour — at 95 % the
-        // page behind bled through its text; a pill keeps the 95 % glass. (A9): the badges read against that card
-        val opaque = content is CueContent.Table
-        val card = if (opaque) g.surfaceModal else g.base.copy(alpha = 0.95f)
-        val under = g.panel.compositeOver(card.copy(alpha = 1f)).toArgb()
+        // iiSU fork (part 6): every cue on iiSU's menu card, opaque (a pill kept 95 % glass, a table the sheet colour). (A9): the
+        // badges read against that card
+        val card = app.wayfinder.ui.menuCard(g)
+        val under = card.toArgb()
+        // iiSU's font (Cal Sans) — the system's if it can't load
+        val font = runCatching { androidx.core.content.res.ResourcesCompat.getFont(ctx, R.font.cal_sans) }.getOrNull()
         /** [glyphsTo]: PlayStation's symbols up to there are drawn as badges (a table's "what" side stays text); [letters]:
          *  a lone A / B / X / Y there too (build 18, E6 addendum: the held list's button side). */
         fun label(t: CharSequence, sp: Float, color: Int = ink, glyphsTo: Int = t.length, letters: Boolean = false) = TextView(ctx).apply {
             // 1.4 (GitHub #66): larger font sizes up to 1.1× — bigger overflowed the screen; cells wrap below
             setTextColor(color)
+            if (font != null) typeface = font
             setTextSize(TypedValue.COMPLEX_UNIT_DIP, sp * ctx.resources.configuration.fontScale.coerceIn(0.85f, 1.1f))
             setLineSpacing(0f, 1.15f)
             text = glyphs(t, textSize, glyphsTo, g.dark, under, color, letters)
@@ -237,7 +238,7 @@ class FocusCue(private val service: AccessibilityService, private val ctlDisplay
                 orientation = LinearLayout.VERTICAL
                 content.title.forEachIndexed { i, t ->
                     addView(label(t, if (i == 0) 17f else 14f, if (i == 0) ink else soft).apply {
-                        if (i == 0) typeface = android.graphics.Typeface.DEFAULT_BOLD
+                        if (i == 0) typeface = android.graphics.Typeface.create(font ?: android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD)
                     })
                 }
                 if (content.cells.isNotEmpty()) addView(TableLayout(ctx).apply {
@@ -298,15 +299,9 @@ class FocusCue(private val service: AccessibilityService, private val ctlDisplay
             }
             is CueContent.Table -> if (content.compact && content.title.isEmpty()) 999f else panel
         }
-        // Glass = a tint (keeps text legible over busy games; 95 %: text behind bled through, 2026-09-24 — a table: opaque,
-        // build 18), a frost lit from the top and a specular rim — public APIs only
+        // iiSU fork (part 6): the card, opaque, and its rim — no frost
         val tint = GradientDrawable().apply { cornerRadius = radius; setColor(card.toArgb()) }
-        val frost = GradientDrawable().apply {
-            cornerRadius = radius
-            orientation = GradientDrawable.Orientation.TOP_BOTTOM
-            colors = intArrayOf(g.panel.toArgb(), g.panel.copy(alpha = g.panel.alpha * 0.4f).toArgb())
-        }
-        view.background = android.graphics.drawable.LayerDrawable(arrayOf(tint, frost,
+        view.background = android.graphics.drawable.LayerDrawable(arrayOf(tint,
             RimDrawable(radius, dp, g.rimTop.toArgb(), g.rimBottom.toArgb())))
         return view
     }
