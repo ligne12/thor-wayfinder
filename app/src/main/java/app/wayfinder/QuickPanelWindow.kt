@@ -267,10 +267,11 @@ private fun PanelBody(first: FocusRequester, close: () -> Unit) {
             // Edit mode arranges the shortcut tiles in place (like a home screen); B / Done leaves it.
             var editing by remember { mutableStateOf(false) }
             // build 18 (E2, pF09): leaving edit mode (B, Done) puts the focus back on Arrange — it was lost off screen
+            // (iiSU fork: entering it too — Arrange and the "Done" pill are two buttons now)
             val arrangeFocus = remember { FocusRequester() }
             val wasEditing = remember { booleanArrayOf(false) }
             LaunchedEffect(editing) {
-                if (!editing && wasEditing[0]) arrangeFocus.requestAfterLayout()
+                if (editing != wasEditing[0]) arrangeFocus.requestAfterLayout()
                 wasEditing[0] = editing
             }
             Box(Modifier.onGloballyPositioned { headerBottom[0] = (it.positionInWindow().y + it.size.height).toInt().coerceAtLeast(0) }) {
@@ -675,8 +676,8 @@ private fun ScreenModeCard(first: FocusRequester, close: () -> Unit) {
     }
     IisuSectionTitle(Icons.Rounded.ViewAgenda, "Screens")
     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) { ScreenMode.values().forEachIndexed { i, m ->
-        IisuToggleTile(m.icon, m.label, mode == i, Modifier.weight(1f).then(if (i == 0) Modifier.focusRequester(first) else Modifier),
-            height = 36.dp, description = m.description) {
+        IisuToggleTile(m.icon, m.label, mode == i, Modifier.weight(1f), height = 36.dp, description = m.description,
+            focusRequester = first.takeIf { i == 0 }) {
             mode = i
             PanelShortcuts.touchBottom()   // 1.3 (GitHub #25): "Keep for <game>" can remember it
             // "Top only" blanks THIS screen: close first, or the panel would sit invisible

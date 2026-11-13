@@ -1,7 +1,8 @@
 package app.wayfinder.ui
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,15 +19,23 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -56,26 +65,42 @@ internal fun tileLayout(heightDp: Float, hasValue: Boolean): TileLayout = when {
  * A toggle tile, as the sound panel's ringer modes: an icon over its name in a 16 dp tile; on, it is filled with the
  * selection gradient (no tick mark). Focusable, with iiSU's focus band. [iconContent] draws the icon instead (an app's
  * own icon), in the tile's ink; [disabled] only fades the content — the action still runs and says why it can't.
+ * Below 48 dp the icon and the name sit side by side. One explicit focus target, as [FocusableGlass]: it holds the focus in
+ * touch mode too, reports it ([FocusTruth]) and is the window's last focused control ([LocalFocusMemory]) — a closed popup
+ * gives the focus back to the tile that opened it.
  */
 @Composable
 fun IisuToggleTile(icon: ImageVector, label: String, on: Boolean, modifier: Modifier = Modifier, height: Dp = 72.dp,
                    description: String = label, value: String? = null, disabled: Boolean = false,
-                   iconContent: (@Composable (tint: Color) -> Unit)? = null, onClick: () -> Unit) {
+                   iconContent: (@Composable (tint: Color) -> Unit)? = null, focusRequester: FocusRequester? = null,
+                   onClick: () -> Unit) {
     val g = LocalGlass.current
     val tile = RoundedCornerShape(16.dp)
-    val gate = androidx.compose.runtime.remember { ReleaseGate() }
+    val gate = remember { ReleaseGate() }
+    val click by rememberUpdatedState(onClick)   // the tap handler is installed once
+    val own = remember { FocusRequester() }
+    val req = focusRequester ?: own
+    val reqNow by rememberUpdatedState(req)
+    val mem = LocalFocusMemory.current
     val ink = if (on) g.onAccent else g.textPrimary
     val glyph: @Composable (Dp) -> Unit = { size ->
         if (iconContent != null) iconContent(ink) else Icon(icon, null, tint = ink, modifier = Modifier.size(size))
     }
     val fade = Modifier.alpha(if (disabled) 0.5f else 1f).padding(horizontal = 4.dp)
     Box(modifier.height(height)
+        .focusRequester(req)
         .focusIndicator(tile)
-        .onKeyEvent { gate.onKey(it, onClick) }
+        .onFocusChanged {
+            FocusTruth.report(req, it.hasFocus)
+            if (it.isFocused) mem?.last = req else gate.armed = false
+        }
+        .onKeyEvent { gate.onKey(it) { click() } }
         .then(if (on) Modifier.clip(tile).background(Brush.linearGradient(g.accentStops), tile)
               else Modifier.glassSurface(g, tile, well = g.surfaceModal, veil = false))
-        .clickable(onClick = onClick)
-        .semantics { contentDescription = description },
+        // not `clickable`: its focus is refused in touch mode (the quick panel opened with nothing focused)
+        .focusable()
+        .pointerInput(Unit) { detectTapGestures { mem?.last = reqNow; click() } }
+        .semantics { contentDescription = description; onClick { click(); true } },
         contentAlignment = Alignment.Center) {
         when (tileLayout(height.value, value != null)) {
             TileLayout.INLINE -> Row(fade, verticalAlignment = Alignment.CenterVertically) {
