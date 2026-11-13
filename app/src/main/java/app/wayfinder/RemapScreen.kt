@@ -1117,7 +1117,8 @@ private fun ControllerTab(src: ThorButton, cur: RemapTarget?, listening: Boolean
             FieldLabel("Its click (${src.label(look)}) becomes")
         }
         // the big one: it listens
-        FocusableGlass(onClick = onListen, radius = Radii.Row, modifier = Modifier.fillMaxWidth(), focusRequester = if (stick) null else first) {
+        FocusableGlass(onClick = onListen, radius = Radii.Row, modifier = Modifier.fillMaxWidth(), focusRequester = if (stick) null else first,
+            selected = listening) {
             Row(Modifier.fillMaxWidth().then(if (listening) Modifier.background(g.accent, RoundedCornerShape(Radii.Row)) else Modifier)
                 .padding(horizontal = 16.dp, vertical = 13.dp), verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterHorizontally)) {
@@ -1235,7 +1236,7 @@ private fun DirArm(d: ThorButton, remap: PadRemap, modifier: Modifier, focus: Fo
     val arrow = when (d) { ThorButton.UP -> "↑"; ThorButton.DOWN -> "↓"; ThorButton.LEFT -> "←"; else -> "→" }
     val name = when (d) { ThorButton.UP -> "Up"; ThorButton.DOWN -> "Down"; ThorButton.LEFT -> "Left"; else -> "Right" }
     // dev build 17 (WP8): the filled arm is a "changed" mark (a status, like the drawing's tags) — not the selected look
-    FocusableGlass(onClick = { onEdit(d) }, radius = Radii.Row, modifier = modifier, focusRequester = focus) {
+    FocusableGlass(onClick = { onEdit(d) }, radius = Radii.Row, modifier = modifier, focusRequester = focus, selected = on) {
         Column(Modifier.fillMaxWidth().height(96.dp).then(if (on) Modifier.padding(2.dp).background(g.accent, RoundedCornerShape(Radii.inset(Radii.Row))) else Modifier)
             .padding(horizontal = 8.dp, vertical = 6.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
             Text("$arrow  $name", color = if (on) g.onAccent else g.textPrimary, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
@@ -1450,7 +1451,7 @@ private fun GyroPopup(gyro: GyroSettings, listening: Boolean, first: FocusReques
                                 set(gyro.copy(button = trig[it])) }
                             Spacer(Modifier.weight(2f))
                         } else {
-                            FocusableGlass(onClick = onListen, radius = Radii.Chip, modifier = Modifier.weight(2.2f)) {
+                            FocusableGlass(onClick = onListen, radius = Radii.Chip, modifier = Modifier.weight(2.2f), selected = listening) {
                                 Row(Modifier.fillMaxWidth().then(if (listening) Modifier.background(g.accent, RoundedCornerShape(Radii.Chip)) else Modifier)
                                     .padding(horizontal = 10.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally)) {
@@ -1577,7 +1578,7 @@ private fun KeyboardTab(cur: RemapTarget?, page: Int, first: FocusRequester, onP
 private fun KeyChip(n: Int, name: String, onMove: () -> Unit, onRemove: () -> Unit) {
     val g = LocalGlass.current
     Row(Modifier.background(g.accent, RoundedCornerShape(Radii.Control)), verticalAlignment = Alignment.CenterVertically) {
-        FocusableGlass(onClick = onMove, radius = Radii.Control) {
+        FocusableGlass(onClick = onMove, radius = Radii.Control, selected = true) {   // the accent face: the strong tint
             Row(Modifier.background(g.accent).padding(start = 4.dp, end = 6.dp, top = 3.dp, bottom = 3.dp),
                 verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
                 Box(Modifier.size(18.dp).background(g.onAccent.copy(alpha = .28f), CircleShape), contentAlignment = Alignment.Center) {
@@ -1587,7 +1588,7 @@ private fun KeyChip(n: Int, name: String, onMove: () -> Unit, onRemove: () -> Un
             }
         }
         // (×: one key, added back with one press — not a two-press delete)
-        FocusableGlass(onClick = onRemove, radius = Radii.Control) {
+        FocusableGlass(onClick = onRemove, radius = Radii.Control, selected = true) {
             Text("×", color = g.onAccent, style = MaterialTheme.typography.labelLarge,
                 modifier = Modifier.background(g.accent).padding(horizontal = 7.dp, vertical = 3.dp))
         }
@@ -1946,7 +1947,7 @@ private fun ChordsPanel(remap: PadRemap, first: FocusRequester, listening: Boole
             Box(Modifier.fillMaxWidth().height(150.dp)) { ActionPicker(null, remember { FocusRequester() }) { add(RemapTarget.Action(it)) } }
             GlassButton("Cancel", { onDone() }, size = ButtonSize.COMPACT)
         } else if (remap.chords.size < PadRemap.MAX_CHORDS) {
-            FocusableGlass(onClick = onListen, radius = Radii.Row, modifier = Modifier.fillMaxWidth()) {
+            FocusableGlass(onClick = onListen, radius = Radii.Row, modifier = Modifier.fillMaxWidth(), selected = listening) {
                 Row(Modifier.fillMaxWidth().then(if (listening) Modifier.background(g.accent, RoundedCornerShape(Radii.Row)) else Modifier)
                     .padding(horizontal = 16.dp, vertical = 12.dp), horizontalArrangement = Arrangement.Center) {
                     HandGlyphText(if (listening) "Press the two buttons…  ${pair.joinToString(" + ") { it.label(look) }}   ·   ${Say.key(ThorButton.HOME)} cancels"

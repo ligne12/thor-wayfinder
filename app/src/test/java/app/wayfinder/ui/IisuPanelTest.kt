@@ -2,6 +2,7 @@ package app.wayfinder.ui
 
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.graphics.toArgb
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -31,5 +32,11 @@ class IisuPanelTest {
             val f = focusTint(dark, onFill = true).compositeOver(mid)
             assertTrue(mid.red - f.red >= 20f / 255f && mid.green - f.green >= 20f / 255f && mid.blue - f.blue >= 20f / 255f)
         }
+    }
+
+    // a white option or button inside a white card (light theme) shows by its edge, as iiSU's controls: iiSU's card edge,
+    // measured on the Thor (#D5D8DA), not the white rim that drew nothing there
+    @Test fun lightEdge_outlinesWhiteOnWhite() {
+        assertTrue(TokenArgb.contrast(TokenArgb.of(LIGHT_EDGE.toArgb()), 0xFFFFFFFFL) >= 1.3)
     }
 }

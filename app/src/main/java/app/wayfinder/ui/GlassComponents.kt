@@ -131,7 +131,9 @@ fun Modifier.glassSurface(
         val bands = listOf(3.dp.toPx() to 0.5f, 6.dp.toPx() to 0.3f, 10.dp.toPx() to 0.25f)
         onDrawBehind { for ((w, k) in bands) drawOutline(o, Color.White.copy(alpha = a * k), style = Stroke(w)) }
     }
-    .border(1.dp, Brush.verticalGradient(listOf(g.rimTop, g.rimBottom)), shape)   // iiSU fork: a line all round
+    // iiSU fork: a line all round — on light, iiSU's grey card edge: the white rim drew nothing, and an option or a button
+    // in a white card was white on white
+    .border(1.dp, if (g.dark) Brush.verticalGradient(listOf(g.rimTop, g.rimBottom)) else androidx.compose.ui.graphics.SolidColor(LIGHT_EDGE), shape)
 
 /** A static frosted glass panel (no interaction). */
 @Composable
@@ -175,7 +177,8 @@ internal class ReleaseGate {
  * dev build 17 (WP8): THE focus look. iiSU fork (part 6): iiSU's settings focus — [focusTint] over the element, inside
  * [shape], while it (or something inside it) has the focus; no halo, ring or scale. [inset]: an element inside a card or a
  * clipping parent (an inner switch row, a slider, a text field). [tint] false: something around it draws the tint (a
- * slider's [SliderRow]). Put it before the element's own surface and before `.focusable()` (it observes that target).
+ * slider's [SliderRow]). [onFill]: an element whose face is the accent, the selection gradient or a picture — the plain
+ * tint is unseen there. Put it before the element's own surface and before `.focusable()` (it observes that target).
  * Device pass (P2-4): and the element it marks comes into view with [FOCUS_VIEW_MARGIN] above and below as the focus
  * arrives (A11) — every control with the focus look (a card, an option, a slider, a text field, the colour wheel), not only
  * [FocusableGlass]: a slider or a code field focused below the fold stayed there, with only `focusable()`'s own bring
@@ -234,6 +237,9 @@ fun Modifier.focusIndicator(shape: Shape, inset: Boolean = false, tint: Boolean 
             if (halo > 0.01f) drawOutline(shape.createOutline(size, layoutDirection, this), focusTint(g.dark, onFill), alpha = halo)
         })
 }
+
+/** iiSU fork: a surface's edge on the light theme — iiSU's card edge, measured on the Thor (IisuPanelTest). */
+internal val LIGHT_EDGE = Color(0xFFD5D8DA)
 
 /** iiSU fork: the focus's tint over an element — iiSU's focused settings row, measured on the Thor (IisuPanelTest). [onFill]:
  *  over the selection gradient (an "on" tile, a chosen option) it darkens it plainly, in both themes: the row's tint moved it

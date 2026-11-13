@@ -397,7 +397,7 @@ object RecentsScreen {
                     modifier = Modifier.size(36.dp).clip(CircleShape).clickable { AppSettings.toggleRecentsLock(t.pkg) }.padding(6.dp))
             }
             Box(Modifier.size(w, h)
-                .focusIndicator(shape)
+                .focusIndicator(shape, onFill = true)   // a picture: the strong tint
                 .onFocusChanged { if (it.isFocused) selectedId = t.taskId }
                 .focusRequester(focus)
                 .focusable()

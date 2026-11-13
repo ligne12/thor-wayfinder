@@ -150,7 +150,7 @@ fun ColorWheel(argb: Int, size: Dp, legend: Boolean, onPick: (Int) -> Unit) {
         Box(
             Modifier.size(size)
                 .focusRequester(req)
-                .focusIndicator(CircleShape)
+                .focusIndicator(CircleShape, onFill = true)   // a hue disc: the strong tint
                 .onFocusChanged { FocusTruth.report(req, it.hasFocus); focused = it.isFocused; if (!it.isFocused) { editing = false; gate.armed = false } }
                 .onKeyEvent { e ->
                     if (ReleaseGate.isSelect(e)) return@onKeyEvent gate.onKey(e) { editing = !editing }
