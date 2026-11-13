@@ -130,7 +130,7 @@ object NotificationCenter {
         }
         owner.attach(root)
         root.addView(androidx.compose.ui.platform.ComposeView(ctx).apply {
-            setContent { ThorGlassTheme(dark = GlassTokens.isDark(ctx)) { CappedFontScale { Center(ctx) } } }
+            setContent { app.wayfinder.ui.IisuLookSource.Follow(ctx); ThorGlassTheme(dark = GlassTokens.isDark(ctx)) { CappedFontScale { Center(ctx) } } }
         })
         root.addOnAttachStateChangeListener(object : android.view.View.OnAttachStateChangeListener {
             override fun onViewAttachedToWindow(v: android.view.View) {}

@@ -2115,6 +2115,12 @@ class ForegroundAppService : AccessibilityService() {
 
     // ── lifecycle ────────────────────────────────────────────────────────
 
+    /** iiSU fork: a theme change reaches the open windows at once ([GlassTokens.noteConfig]). */
+    override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
+        super.onConfigurationChanged(newConfig)
+        app.wayfinder.ui.GlassTokens.noteConfig(newConfig)
+    }
+
     override fun onServiceConnected() {
         super.onServiceConnected()
         windowsSettleUntil = android.os.SystemClock.uptimeMillis() + WINDOWS_SETTLE_MS   // iiSU fork
@@ -2255,6 +2261,7 @@ class ForegroundAppService : AccessibilityService() {
         instance = this
         MainActivity.announceHub()
         isRunning = true
+        app.wayfinder.ui.GlassTokens.noteConfig(resources.configuration)
         Log.d(TAG, "Connected — displays: $availableDisplayIds, flags: ${serviceInfo.flags}, ignored: $ignoredPackages")
     }
 

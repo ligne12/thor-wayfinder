@@ -167,16 +167,13 @@ object QuickPanelWindow {
         root.setViewTreeOnBackPressedDispatcherOwner(owner)
         val compose = androidx.compose.ui.platform.ComposeView(ctx).apply {
             setContent {
-                val dark = when (AppSettings.themeMode) {
-                    ThemeMode.DARK, ThemeMode.BLACK -> true
-                    ThemeMode.LIGHT -> false
-                    ThemeMode.SYSTEM -> androidx.compose.foundation.isSystemInDarkTheme()
-                }
+                val dark = app.wayfinder.ui.GlassTokens.isDark(ctx)   // iiSU fork: follows a theme change while open
                 androidx.compose.runtime.CompositionLocalProvider(
                     app.wayfinder.ui.LocalRealGlass provides (blur && !AppSettings.flatLook),
                     androidx.activity.compose.LocalOnBackPressedDispatcherOwner provides owner,
                 ) {
                     // dev build 16 (WP7): one Back path on the panel's dispatcher, its sheets, the hand's names (dev build 15, WP2)
+                    app.wayfinder.ui.IisuLookSource.Follow(ctx)
                     ThorGlassTheme(dark = dark) { app.wayfinder.ui.CappedFontScale { app.wayfinder.ui.WindowRoot { PanelContent(close = { close() }) } } }
                 }
             }

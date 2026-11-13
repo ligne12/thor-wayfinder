@@ -139,6 +139,15 @@ object IisuLookSource {
     // one line per read at most (a changed file), so kept in release: it is how to tell what Wayfinder took from iiSU
     private fun log(what: String) = android.util.Log.i("IisuLook", what)
 
+    /**
+     * While the calling window shows, iiSU's look is read again every [ms] (one `stat` when nothing changed): a theme changed in
+     * iiSU's settings on the other screen shows here at once, not at the next open (Thomas).
+     */
+    @androidx.compose.runtime.Composable
+    fun Follow(ctx: android.content.Context, ms: Long = 1500L) {
+        androidx.compose.runtime.LaunchedEffect(Unit) { while (true) { kotlinx.coroutines.delay(ms); refreshAsync(ctx) } }
+    }
+
     fun refreshAsync(ctx: android.content.Context) {
         val appCtx = ctx.applicationContext
         if (!busy.compareAndSet(false, true)) return

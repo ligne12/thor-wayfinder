@@ -295,12 +295,21 @@ fun glassColorsFor(dark: Boolean, black: Boolean, custom: CustomColours?): Glass
 /** dev build 17 (WP10, critique K5): the theme outside Compose — the overlays (FocusCue), the deck and the keyboard read
  *  the same answer [ThorGlassTheme] provides ([glassColorsFor]). */
 object GlassTokens {
-    /** Dark? The theme setting, else the system's night mode on [ctx] (a display context for an overlay). */
+    /** iiSU fork: the system's night mode as Compose state, noted by the service at each change ([noteConfig]); null: not yet. */
+    private val night = androidx.compose.runtime.mutableStateOf<Boolean?>(null)
+
+    /** iiSU fork: an overlay read its window's configuration once — the centers stayed light, a dark theme on, until reopened.
+     *  Noted here, every window's theme follows at once. */
+    fun noteConfig(c: android.content.res.Configuration) {
+        night.value = (c.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) == android.content.res.Configuration.UI_MODE_NIGHT_YES
+    }
+
+    /** Dark? The theme setting, else the system's night mode (as noted; before that, on [ctx]: a display context for an overlay). */
     fun isDark(ctx: android.content.Context): Boolean = when (app.wayfinder.AppSettings.themeMode) {
         app.wayfinder.ThemeMode.DARK, app.wayfinder.ThemeMode.BLACK -> true
         app.wayfinder.ThemeMode.LIGHT -> false
-        app.wayfinder.ThemeMode.SYSTEM -> (ctx.resources.configuration.uiMode and
-            android.content.res.Configuration.UI_MODE_NIGHT_MASK) == android.content.res.Configuration.UI_MODE_NIGHT_YES
+        app.wayfinder.ThemeMode.SYSTEM -> night.value ?: ((ctx.resources.configuration.uiMode and
+            android.content.res.Configuration.UI_MODE_NIGHT_MASK) == android.content.res.Configuration.UI_MODE_NIGHT_YES)
     }
     /** The colours a Wayfinder window on [ctx]'s display draws with — black and "Your own colours" included. */
     fun resolve(ctx: android.content.Context): GlassColors = isDark(ctx).let { dark ->
