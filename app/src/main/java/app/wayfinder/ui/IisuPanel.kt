@@ -3,9 +3,16 @@ package app.wayfinder.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -13,6 +20,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -20,6 +28,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -33,29 +42,76 @@ import androidx.compose.ui.unit.sp
 /** iiSU's menu card: light grey in light (a slider's white track and thumb read on it), the modal surface in dark. */
 fun menuCard(g: GlassColors): Color = if (g.dark) g.surfaceModal else Color(IisuLook.MENU_LIGHT)
 
+/** iiSU fork: how a toggle tile lays its content out — from its height, then whether it carries a value. */
+enum class TileLayout { INLINE, TWO_LINES, NAME_VALUE, LARGE }
+
+/** Under 48 dp the icon and the name sit side by side (no room for a value); under 72 dp a value takes the second line. */
+internal fun tileLayout(heightDp: Float, hasValue: Boolean): TileLayout = when {
+    heightDp < 48f -> TileLayout.INLINE
+    heightDp < 72f -> if (hasValue) TileLayout.NAME_VALUE else TileLayout.TWO_LINES
+    else -> TileLayout.LARGE
+}
+
 /**
  * A toggle tile, as the sound panel's ringer modes: an icon over its name in a 16 dp tile; on, it is filled with the
- * selection gradient (no tick mark). Focusable, with iiSU's focus band.
+ * selection gradient (no tick mark). Focusable, with iiSU's focus band. [iconContent] draws the icon instead (an app's
+ * own icon), in the tile's ink; [disabled] only fades the content — the action still runs and says why it can't.
  */
 @Composable
 fun IisuToggleTile(icon: ImageVector, label: String, on: Boolean, modifier: Modifier = Modifier, height: Dp = 72.dp,
-                   description: String = label, onClick: () -> Unit) {
+                   description: String = label, value: String? = null, disabled: Boolean = false,
+                   iconContent: (@Composable (tint: Color) -> Unit)? = null, onClick: () -> Unit) {
     val g = LocalGlass.current
     val tile = RoundedCornerShape(16.dp)
     val gate = androidx.compose.runtime.remember { ReleaseGate() }
-    Column(modifier.height(height)
+    val ink = if (on) g.onAccent else g.textPrimary
+    val glyph: @Composable (Dp) -> Unit = { size ->
+        if (iconContent != null) iconContent(ink) else Icon(icon, null, tint = ink, modifier = Modifier.size(size))
+    }
+    val fade = Modifier.alpha(if (disabled) 0.5f else 1f).padding(horizontal = 4.dp)
+    Box(modifier.height(height)
         .focusIndicator(tile)
         .onKeyEvent { gate.onKey(it, onClick) }
         .then(if (on) Modifier.clip(tile).background(Brush.linearGradient(g.accentStops), tile)
               else Modifier.glassSurface(g, tile, well = g.surfaceModal, veil = false))
         .clickable(onClick = onClick)
         .semantics { contentDescription = description },
-        horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-        val ink = if (on) g.onAccent else g.textPrimary
-        Icon(icon, null, tint = ink, modifier = Modifier.size(24.dp))
-        // a low tile (the notification center's) takes a longer name on two smaller lines ("Do not disturb")
-        if (height < 72.dp) Text(label, color = ink, style = MaterialTheme.typography.labelMedium, maxLines = 2,
-            overflow = TextOverflow.Ellipsis, textAlign = androidx.compose.ui.text.style.TextAlign.Center, lineHeight = 13.sp)
-        else Text(label, color = ink, style = MaterialTheme.typography.labelLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        contentAlignment = Alignment.Center) {
+        when (tileLayout(height.value, value != null)) {
+            TileLayout.INLINE -> Row(fade, verticalAlignment = Alignment.CenterVertically) {
+                glyph(18.dp)
+                Spacer(Modifier.width(6.dp))
+                Text(label, color = ink, style = MaterialTheme.typography.labelLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+            TileLayout.NAME_VALUE -> Column(fade, horizontalAlignment = Alignment.CenterHorizontally) {
+                glyph(22.dp)
+                Text(label, color = ink, style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(value!!, color = if (on) g.onAccent else g.textSecondary, style = MaterialTheme.typography.labelSmall,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+            // a low tile (the notification center's) takes a longer name on two smaller lines ("Do not disturb")
+            TileLayout.TWO_LINES -> Column(fade, horizontalAlignment = Alignment.CenterHorizontally) {
+                glyph(24.dp)
+                Text(label, color = ink, style = MaterialTheme.typography.labelMedium, maxLines = 2,
+                    overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, lineHeight = 13.sp)
+            }
+            TileLayout.LARGE -> Column(fade, horizontalAlignment = Alignment.CenterHorizontally) {
+                glyph(24.dp)
+                Text(label, color = ink, style = MaterialTheme.typography.labelLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+        }
+    }
+}
+
+/** iiSU fork: a section's title, as "Launch Behavior" in iiSU's settings — icon, name, then a hairline to the edge. */
+@Composable
+fun IisuSectionTitle(icon: ImageVector, title: String, modifier: Modifier = Modifier) {
+    val g = LocalGlass.current
+    Row(modifier.fillMaxWidth().heightIn(min = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+        Icon(icon, null, tint = g.textSecondary, modifier = Modifier.size(14.dp))
+        Spacer(Modifier.width(6.dp))
+        Text(title, color = g.textPrimary, style = MaterialTheme.typography.labelLarge, maxLines = 1, lineHeight = 16.sp)
+        Spacer(Modifier.width(8.dp))
+        Box(Modifier.weight(1f).height(1.dp).background(g.textTertiary.copy(alpha = 0.35f)))
     }
 }
