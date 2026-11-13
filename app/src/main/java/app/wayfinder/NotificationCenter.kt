@@ -244,7 +244,7 @@ object NotificationCenter {
                 }
                 items(items, key = { it.key }) { n -> Card(ctx, n) }
             }
-            Box(Modifier.align(Alignment.CenterHorizontally).padding(top = 8.dp).size(40.dp, 5.dp).clip(CircleShape)
+            Box(Modifier.align(Alignment.CenterHorizontally).padding(top = 20.dp).size(40.dp, 5.dp).clip(CircleShape)   // Thomas: not stuck to the last card
                 .background(g.textTertiary.copy(alpha = 0.5f)))
         }
     }
