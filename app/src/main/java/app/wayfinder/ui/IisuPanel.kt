@@ -140,3 +140,14 @@ fun IisuSectionTitle(icon: ImageVector, title: String, modifier: Modifier = Modi
         Box(Modifier.weight(1f).height(1.dp).background(g.textTertiary.copy(alpha = 0.35f)))
     }
 }
+
+/** iiSU fork: the control center's round button — a circle of [size] with a 20 dp icon. Also a page's Back (part 6) and the
+ *  Hub's Ko-fi. */
+@Composable
+fun IisuRoundButton(icon: ImageVector, description: String, onClick: () -> Unit, focusRequester: FocusRequester? = null,
+                    size: androidx.compose.ui.unit.Dp = 36.dp, modifier: Modifier = Modifier) {
+    FocusableGlass(onClick = onClick, modifier = modifier.size(size), radius = size / 2, focusRequester = focusRequester,
+        contentAlignment = Alignment.Center) {
+        androidx.compose.material3.Icon(icon, description, tint = LocalGlass.current.textSecondary, modifier = Modifier.size(20.dp))
+    }
+}

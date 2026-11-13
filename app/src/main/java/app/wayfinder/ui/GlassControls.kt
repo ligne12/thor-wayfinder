@@ -340,7 +340,11 @@ fun PageHeader(title: String, onBack: () -> Unit, modifier: Modifier = Modifier,
     var headerW by remember { mutableIntStateOf(0) }
     var trailW by remember { mutableIntStateOf(0) }
     Row(modifier.onSizeChanged { headerW = it.width }, verticalAlignment = Alignment.Top) {
-        BackPill(onBack, Modifier.padding(top = pillTop).then(backModifier), backLabel)
+        // iiSU fork (part 6): a round Back, as the control center's buttons — B goes back as before; never a page's entry
+        CompositionLocalProvider(LocalEntryFocus provides null) {
+            IisuRoundButton(Icons.AutoMirrored.Rounded.ArrowBack, backLabel, onBack, size = BackPillDefaults.HEIGHT,
+                modifier = Modifier.padding(top = pillTop).then(backModifier))
+        }
         Column(Modifier.weight(1f).padding(start = 14.dp)) {
             if (overline != null) Text(overline, color = g.textTertiary, style = MaterialTheme.typography.labelSmall, maxLines = 1)
             Text(title, color = g.textPrimary, style = titleStyle)

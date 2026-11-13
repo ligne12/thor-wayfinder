@@ -628,19 +628,12 @@ private fun PanelHeader(close: () -> Unit, editing: Boolean, arrangeFocus: Focus
         // iiSU fork: three round buttons, as iiSU's; editing, Arrange is the "Done" pill
         if (editing) FocusableGlass(onClick = toggleEdit, radius = Radii.Control, focusRequester = arrangeFocus) {
             Text("Done", color = g.accent, style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp))
-        } else RoundButton(Icons.Rounded.Edit, "Arrange", toggleEdit, arrangeFocus)
+        } else app.wayfinder.ui.IisuRoundButton(Icons.Rounded.Edit, "Arrange", toggleEdit, arrangeFocus)
         // build 18 (E10, V20): it leaves the panel for Wayfinder — a compass in the text colour (a blue gear read as the panel's
         // own settings, which are Arrange's, and drew the eye)
         // device pass (d3 N2): the Hub's home, as the "Wayfinder" tile — it brought back whatever was open (Game controls)
-        RoundButton(Icons.Rounded.Explore, "Open Wayfinder", { PanelShortcuts.openWayfinder(ctx); close() })
-        RoundButton(Icons.Rounded.Close, "Close", close)
-    }
-}
-
-@Composable
-private fun RoundButton(icon: ImageVector, description: String, onClick: () -> Unit, focus: FocusRequester? = null) {
-    FocusableGlass(onClick = onClick, modifier = Modifier.size(36.dp), radius = 18.dp, focusRequester = focus, contentAlignment = Alignment.Center) {
-        Icon(icon, description, tint = LocalGlass.current.textSecondary, modifier = Modifier.size(20.dp))
+        app.wayfinder.ui.IisuRoundButton(Icons.Rounded.Explore, "Open Wayfinder", { PanelShortcuts.openWayfinder(ctx); close() })
+        app.wayfinder.ui.IisuRoundButton(Icons.Rounded.Close, "Close", close)
     }
 }
 

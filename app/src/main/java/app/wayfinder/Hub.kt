@@ -377,18 +377,12 @@ private fun HubHome(myDisplayId: Int, go: (String) -> Unit) {
                 Box(Modifier.weight(1f))
                 // discreet support link (2026-09-26): small, quiet, opens Ko-fi in the browser. Build 18 (B5, hF6): the
                 // same words, smaller — reached only by Left from Search
-                FocusableGlass(onClick = { openKofi(ctx, myDisplayId) }, radius = Radii.Tile,
+                // iiSU fork (part 6): a round button, as the control center's
+                app.wayfinder.ui.IisuRoundButton(Icons.Rounded.Coffee, "Support me on Ko-fi", { openKofi(ctx, myDisplayId) },
+                    size = app.wayfinder.ui.BackPillDefaults.HEIGHT,
                     // the row's first button: left stays here (it dropped into the tiles below — QA2); the update pill, when
                     // it shows, is left of it
-                    modifier = Modifier.focusProperties { left = if (UpdateCheck.available != null) FocusRequester.Default else FocusRequester.Cancel }) {
-                    Row(Modifier.padding(horizontal = 10.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Icon(Icons.Rounded.Coffee, null, tint = g.textTertiary, modifier = Modifier.size(16.dp))
-                        // 1.4 (GitHub #66): with a large font the words pushed the search box off the screen
-                        if (androidx.compose.ui.platform.LocalDensity.current.fontScale <= 1.05f)
-                            Text("Support me on Ko-fi", color = g.textTertiary, style = MaterialTheme.typography.labelMedium)
-                    }
-                }
+                    modifier = Modifier.focusProperties { left = if (UpdateCheck.available != null) FocusRequester.Default else FocusRequester.Cancel })
                 // build 18 (B2, hF4): its id is its page's — back from Search, the focus is on it again (lastHubCard)
                 androidx.compose.runtime.CompositionLocalProvider(app.wayfinder.ui.LocalEntryFocus provides cards) {
                 FocusableGlass(onClick = { SearchState.query = ""; SearchState.returning = false; open(HubPage.SEARCH) }, radius = Radii.Tile,
@@ -576,8 +570,9 @@ private fun StatusStrip(myDisplayId: Int) {
         if (d == myDisplayId) "Wayfinder"
         else ForegroundAppService.displayApps[d]?.let { appLabel(ctx, it) } ?: "Home screen"
     } + when (mode) { 1 -> " · top only"; 2 -> " · bottom only"; else -> "" }
-    GlassPanel(Modifier.fillMaxWidth(), radius = Radii.Tile) {
-        Row(Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+    // iiSU fork (part 6): no card — labels and values, as the control center's readouts; the cells' text lines up with the tiles'
+    run {
+        Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
             // build 18 (B5): the controller's longer words ("stays where you send it") get the room Brightness gave up
             StripCell("Controller", "$where · $how", Modifier.weight(1.25f))
             if (layerProblem != null) StripCell("Game controls", layerProblem, Modifier.weight(0.9f), dot = g.warn)
