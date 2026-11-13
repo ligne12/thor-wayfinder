@@ -198,16 +198,6 @@ private fun ExpandButton(open: Boolean, focus: FocusRequester? = null, onClick: 
     }
 }
 
-/** Appearance → See-through glass: frost amount and blur strength of the live-blur glass. */
-@Composable
-fun GlassLookSliders(onBlur: () -> Unit) {
-    // build 18 (A20): no icon slot — the names start at the card's text edge
-    LevelRow(null, "Transparency", compact = false, value = "${(AppSettings.glassClarity * 100).toInt()} %",
-        pos = AppSettings.glassClarity, iconSlot = false) { AppSettings.setGlassLook(clarity = Math.round(it * 20) / 20f) }
-    LevelRow(null, "Blur", compact = false, value = "${(AppSettings.glassBlur * 100).toInt()} %",
-        pos = AppSettings.glassBlur, iconSlot = false) { AppSettings.setGlassLook(blur = Math.round(it * 20) / 20f); onBlur() }
-}
-
 /**
  * Colour saturation of both screens (the panels are vivid out of the box; 80–90 % looks
  * natural). SurfaceFlinger's saturation: live via its debug transaction 1022, kept across

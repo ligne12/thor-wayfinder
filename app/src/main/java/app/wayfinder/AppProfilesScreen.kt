@@ -54,7 +54,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.width
 import androidx.compose.ui.unit.sp
 import androidx.core.graphics.drawable.toBitmap
-import app.wayfinder.ui.AuroraSpan
 import app.wayfinder.ui.FocusableGlass
 import app.wayfinder.ui.GlassScreen
 import app.wayfinder.ui.LocalGlass
@@ -147,7 +146,7 @@ fun AppProfilesScreen(myDisplayId: Int, onOpen: (String) -> Unit, onBack: () -> 
     }
     val ordered = remember(shown) { shown?.flatMap { it.second } }
 
-    GlassScreen(span = if (myDisplayId == 0) AuroraSpan.TOP else AuroraSpan.BOTTOM) {
+    GlassScreen {
         Column(
             Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()
                 .padding(horizontal = 20.dp, vertical = 16.dp),
@@ -163,7 +162,7 @@ fun AppProfilesScreen(myDisplayId: Int, onOpen: (String) -> Unit, onBack: () -> 
                 val field = RoundedCornerShape(Radii.Row)
                 app.wayfinder.ui.ControllerTextField(query, { query = it.take(30) }, Modifier.width(200.dp).focusProperties { left = backFocus },
                     textStyle = androidx.compose.ui.text.TextStyle(color = g.textPrimary, fontSize = 16.sp), placeholder = "Find an app…",
-                    surface = Modifier.glassSurface(g, field, raised = false), shape = field,
+                    surface = Modifier.glassSurface(g, field), shape = field,
                     contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 14.dp, vertical = 11.dp),
                     gateFocus = searchGate)
                 // build 18 (GC12, gd-D23): a plain button — it was the loudest control on the page

@@ -43,7 +43,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.unit.dp
-import app.wayfinder.ui.AuroraSpan
 import app.wayfinder.ui.ButtonSize
 import app.wayfinder.ui.Caption
 import app.wayfinder.ui.GlassButton
@@ -95,7 +94,7 @@ fun GamePage(myDisplayId: Int, key: String, inGame: Boolean, openedBy: String?, 
     if (BuildConfig.DEBUG) LaunchedEffect(key) {
         Log.d("ThorGamePage", "in=${if (inGame) 1 else 0} app=%04x start=%s".format(appPkg.hashCode() and 0xffff, start.name.lowercase()))
     }
-    GlassScreen(span = if (myDisplayId == 0) AuroraSpan.TOP else AuroraSpan.BOTTOM) {
+    GlassScreen {
         BoxWithConstraints(Modifier.fillMaxSize()) {
             val pageH = maxHeight
             val sectionsTop = with(LocalDensity.current) { pageH.roundToPx() }      // the app settings start one screen down

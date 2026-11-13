@@ -341,7 +341,7 @@ fun ControllerTestPage(myDisplayId: Int, key: String?, onBack: () -> Unit) {
     val shaped = !shape.stickL.isDefault || !shape.stickR.isDefault
 
     CompositionLocalProvider(LocalPadLook provides look) {
-    app.wayfinder.ui.GlassScreen(span = if (myDisplayId == 0) app.wayfinder.ui.AuroraSpan.TOP else app.wayfinder.ui.AuroraSpan.BOTTOM) {
+    app.wayfinder.ui.GlassScreen {
         // scrolls by touch only (the page reads every button): build 18 (C2, CTL-02) — the deadzone card right under the
         // header, so it is in view on the top screen without scrolling (it was under the sticks, out of the controller's reach)
         Column(Modifier.fillMaxWidth()

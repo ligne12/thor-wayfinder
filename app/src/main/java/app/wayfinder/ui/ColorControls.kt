@@ -398,7 +398,7 @@ fun HexColorField(argb: Int, onPick: (Int) -> Unit, modifier: Modifier = Modifie
             hex = t.take(7).uppercase()
             Regex("^#?([0-9A-F]{6})$").find(hex)?.groupValues?.get(1)?.let { onPick(it.toLong(16).toInt() or 0xFF000000.toInt()) }
         }, Modifier.width(fieldWidth), textStyle = TextStyle(color = g.textPrimary, fontSize = textSize),
-            surface = Modifier.glassSurface(g, shape, raised = false), shape = shape,
+            surface = Modifier.glassSurface(g, shape), shape = shape,
             contentPadding = if (stacked) PaddingValues(horizontal = 12.dp, vertical = 9.dp) else PaddingValues(horizontal = 10.dp, vertical = 8.dp),
             keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters, autoCorrect = false,
                 keyboardType = KeyboardType.Ascii),

@@ -107,7 +107,7 @@ private fun AynSlotRow(hold: Boolean, title: String, line: String, id: String, m
                 Text(title, color = g.textPrimary, style = MaterialTheme.typography.bodyLarge)
                 Text(line, color = g.textTertiary, style = MaterialTheme.typography.bodySmall)
             }
-            GlassPanel(radius = Radii.Control, strong = true) {
+            GlassPanel(radius = Radii.Control) {
                 Box(Modifier.padding(horizontal = 10.dp, vertical = 6.dp)) { AynGlyph(hold, 26.dp) }
             }
         }

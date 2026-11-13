@@ -363,7 +363,7 @@ private fun EditorCell(id: String, modifier: Modifier, lifted: Boolean, badge: S
         .focusIndicator(shape)
         .onFocusChanged { focused = it.isFocused; onFocus(it.isFocused) }
         .focusable()
-        .glassSurface(g, shape, raised = focused || lifted)) {
+        .glassSurface(g, shape)) {
         Column(Modifier.fillMaxSize().padding(horizontal = 4.dp, vertical = 4.dp), verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally) {
             TileIcon(info.icon, info.pkg, if (dim) g.textTertiary else g.accent, 20.dp)

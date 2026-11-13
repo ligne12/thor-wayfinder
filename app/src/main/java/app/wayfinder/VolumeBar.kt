@@ -230,9 +230,9 @@ object VolumeBar {
         // iiSU's menus: a solid card (no home-tile veil: it would vanish over a game), 20 dp corners
         val card = RoundedCornerShape(Radii.Modal)
         if (wide) { Wide(card, onRingerMode); return }
-        Column(Modifier.padding(8.dp).width(68.dp).glassSurface(g, card, well = menuCard(g), veil = false).padding(vertical = 12.dp),
+        Column(Modifier.padding(8.dp).width(68.dp).glassSurface(g, card, well = menuCard(g)).padding(vertical = 12.dp),
             horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Box(Modifier.size(44.dp).glassSurface(g, androidx.compose.foundation.shape.CircleShape, well = g.surfaceModal, veil = false)
+            Box(Modifier.size(44.dp).glassSurface(g, androidx.compose.foundation.shape.CircleShape, well = g.surfaceModal)
                 .clickable(onClick = onRinger).semantics { contentDescription = "Ringer: ${ringerName(ringer)}" },
                 contentAlignment = Alignment.Center) {
                 Icon(ringerIcon(ringer), null, tint = g.textPrimary, modifier = Modifier.size(22.dp))
@@ -269,7 +269,7 @@ object VolumeBar {
     @Composable
     private fun Wide(card: RoundedCornerShape, onRingerMode: (Int) -> Unit) {
         val g = LocalGlass.current
-        Column(Modifier.padding(8.dp).width(360.dp).glassSurface(g, card, well = menuCard(g), veil = false).padding(18.dp),
+        Column(Modifier.padding(8.dp).width(360.dp).glassSurface(g, card, well = menuCard(g)).padding(18.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Text("Sound", color = g.textPrimary, style = MaterialTheme.typography.titleMedium)
             // the ringer mode: three tiles, icon and word; the chosen one in the selection gradient (no tick mark)

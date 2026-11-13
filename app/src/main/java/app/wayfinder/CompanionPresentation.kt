@@ -75,20 +75,6 @@ class CompanionPresentation(
         override val onBackPressedDispatcher: androidx.activity.OnBackPressedDispatcher get() = back
     }
 
-    /** Real glass on this screen too: blur what's behind the deck (the bottom screen's app/launcher). */
-    private val realGlass = androidx.compose.runtime.mutableStateOf(false)
-    fun applyBackdrop(on: Boolean) {
-        realGlass.value = on
-        val w = window ?: return
-        if (android.os.Build.VERSION.SDK_INT >= 31) {
-            w.setBackgroundBlurRadius(if (on) AppSettings.glassBlurPx() else 0)
-            // Also blur-behind (the other system blur path) for this dialog-type window.
-            if (on) w.addFlags(android.view.WindowManager.LayoutParams.FLAG_BLUR_BEHIND)
-            else w.clearFlags(android.view.WindowManager.LayoutParams.FLAG_BLUR_BEHIND)
-            w.attributes = w.attributes.apply { blurBehindRadius = if (on) AppSettings.glassBlurPx() else 0; dimAmount = 0f }
-        }
-    }
-
     override fun dispatchKeyEvent(event: android.view.KeyEvent): Boolean {
         // dev build 14 (critic 2): a connected controller's MODE (its Home is the game's) — unhandled, Android makes it Home
         if (event.keyCode == android.view.KeyEvent.KEYCODE_BUTTON_MODE) return true
@@ -122,8 +108,7 @@ class CompanionPresentation(
                 }
                 // dev build 15 (WP2): buttons named as on the controller in hand — dev build 16 (WP7): through WindowRoot, with
                 // the window's own Back path and sheets
-                androidx.compose.runtime.CompositionLocalProvider(app.wayfinder.ui.LocalRealGlass provides (realGlass.value && !AppSettings.flatLook),
-                    androidx.activity.compose.LocalOnBackPressedDispatcherOwner provides backOwner) {
+                androidx.compose.runtime.CompositionLocalProvider(androidx.activity.compose.LocalOnBackPressedDispatcherOwner provides backOwner) {
                     ThorGlassTheme(dark = dark) {
                         // build 18 (E6, D1): this screen's status-bar icons follow the theme's colours (dark icons on a light one)
                         val lightBars = !LocalGlass.current.dark
@@ -214,7 +199,7 @@ private fun CompanionScreen(hubDisplay: Int) {
             AppSettings.aynHold?.let { a -> add(Card({ app.wayfinder.ui.AynGlyph(true, 28.dp) }, app.wayfinder.ui.actionIcon(a), a.shortTitle)) }
         }
     }
-    GlassScreen(span = app.wayfinder.ui.AuroraSpan.BOTTOM) {
+    GlassScreen {
         Column(
             Modifier.fillMaxSize()
                 .navigationBarsPadding()

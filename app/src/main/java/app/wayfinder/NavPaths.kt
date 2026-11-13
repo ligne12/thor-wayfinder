@@ -103,9 +103,6 @@ object NavCards {
     // ── Appearance ──
     val THEME = NavCard("appearance:theme", HubPage.APPEARANCE, "Theme")
     val OWN_COLOURS = NavCard("appearance:own", HubPage.APPEARANCE, "Your own colours")
-    val BACKDROP = NavCard("appearance:backdrop", HubPage.APPEARANCE, "Glass backdrop", inMore = true)
-    val SEE_THROUGH = NavCard("appearance:see", HubPage.APPEARANCE, "See-through glass", inMore = true)
-    val REFRACTION = NavCard("appearance:refraction", HubPage.APPEARANCE, "Light refraction", inMore = true)
     val HUB_SCREEN = NavCard("appearance:hub", HubPage.APPEARANCE, "Hub screen", inMore = true)
     // ── Hints, Battery, Sleep, Stick lights, Keyboard ──
     val RECENTS_HINT = NavCard("hints:recents", HubPage.HINTS, "Recent apps — the controller hint")
@@ -153,7 +150,7 @@ object NavCards {
         PAD_SPARES, APP_COMBOS, APP_LIGHTS, GC_PLAYER1, GC_APP_LAYER, GC_LIGHTS, GC_BRING_BACK, GC_GYRO,
         // build 18 (B3)
         BRIGHTNESS, GESTURE, WAKE2, IDLE, COLOUR, DND, AWAKE, FPS, NAVBAR, ANIMATE, VOLUME, SPEAKER, HEADEQ, BOOST, LINKED,
-        THEME, OWN_COLOURS, BACKDROP, SEE_THROUGH, REFRACTION, HUB_SCREEN, RECENTS_HINT, LIMIT80, DIRECT, LID_PAUSE, LIGHTS_FOLLOW,
+        THEME, OWN_COLOURS, HUB_SCREEN, RECENTS_HINT, LIMIT80, DIRECT, LID_PAUSE, LIGHTS_FOLLOW,
         KB_WHERE, KB_DPAD, UPDATES, BACKUP, A11Y,
         HELP_ACCESS,                                                       // build 18 (B11)
         THOR_NAME,                                                         // build 18 (C11)

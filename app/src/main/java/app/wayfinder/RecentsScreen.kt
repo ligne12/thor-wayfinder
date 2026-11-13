@@ -388,7 +388,7 @@ object RecentsScreen {
                 Text(label, color = g.textPrimary, style = MaterialTheme.typography.titleSmall, maxLines = 1,
                     overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
                 // the screen it is on: a tap sends it to the other
-                Box(Modifier.size(36.dp).glassSurface(g, CircleShape, well = g.surfaceModal, veil = false).clickable { move(t) }
+                Box(Modifier.size(36.dp).glassSurface(g, CircleShape, well = g.surfaceModal).clickable { move(t) }
                     .semantics { contentDescription = "On screen $screen: move to the other screen" }, contentAlignment = Alignment.Center) {
                     Text(screen, color = g.textPrimary, style = MaterialTheme.typography.labelLarge)
                 }

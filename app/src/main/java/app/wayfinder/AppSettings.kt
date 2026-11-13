@@ -60,9 +60,8 @@ object AppSettings {
     }
 
     /** Blur radius in px for [glassBlur] (the old fixed value, 90, sits in the middle). */
-    fun glassBlurPx(): Int = (30 + glassBlur * 120).toInt()
 
-    /** Glass panels bend the light behind them (Android 13+; see ui/GlassLens.kt). */
+    /** Glass panels bent the light behind them — iiSU fork (part 6): no effect any more; kept for old backups. */
     /** Animate apps moving between the screens. */
     var animateMoves by mutableStateOf(true)
         private set
@@ -101,7 +100,6 @@ object AppSettings {
 
     fun setRefractionOn(on: Boolean) {
         refraction = on
-        app.wayfinder.ui.GlassLensConfig.enabled = on
         if (::prefs.isInitialized) prefs.edit().putBoolean("refraction", on).apply()
     }
 
@@ -325,7 +323,6 @@ object AppSettings {
     fun customColours(): app.wayfinder.ui.CustomColours? =
         if (!customColors) null else app.wayfinder.ui.CustomColours(customBg, customCard, customText, customAccent)
     /** No glass: Black, or your own colours. */
-    val flatLook: Boolean get() = app.wayfinder.ui.IisuLookSource.current.blur == false   // iiSU fork: iiSU's Glass Blur
 
     /** 3-finger gesture on the bottom screen blanks/wakes it (on the fly). */
     var gestureBlankMode by mutableStateOf(BlankGesture.TAP)
@@ -347,7 +344,6 @@ object AppSettings {
         keepBottomOn = prefs.getBoolean("keep_bottom_on", false)
         glassClarity = prefs.getFloat("glass_clarity", 0.5f)
         glassBlur = prefs.getFloat("glass_blur", 0.5f)
-        app.wayfinder.ui.GlassLensConfig.enabled = refraction
         shotTarget = runCatching { ShotTarget.valueOf(prefs.getString("shot_target", null) ?: "TOP") }.getOrDefault(ShotTarget.TOP)
         recordFolder = runCatching { RecordFolder.valueOf(prefs.getString("record_folder", null) ?: "MOVIES") }.getOrDefault(RecordFolder.MOVIES)
         focusLockEnabled = prefs.getBoolean("focus_lock", false)

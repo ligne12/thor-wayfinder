@@ -84,7 +84,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.graphics.drawable.toBitmap
-import app.wayfinder.ui.AuroraSpan
 import app.wayfinder.ui.FocusableGlass
 import app.wayfinder.ui.GlyphText
 import app.wayfinder.ui.LocalPadLook
@@ -173,7 +172,7 @@ fun RemapScreen(myDisplayId: Int, pkg: String, onBack: () -> Unit, inGame: Boole
                 openedBy: String? = null,
                 /** where Back goes when it isn't the game or Games ("Back to DualSense": a controller's every-game editor) */
                 backTo: String? = null) {
-    GlassScreen(span = if (myDisplayId == 0) AuroraSpan.TOP else AuroraSpan.BOTTOM) {
+    GlassScreen {
         GameControls(myDisplayId, pkg, onBack, inGame, onSwitchApp, onAllApps, openedBy, backTo)
     }
 }
@@ -877,7 +876,7 @@ internal fun GameControls(myDisplayId: Int, pkg: String, onBack: () -> Unit, inG
                 Spacer(Modifier.height(8.dp))
             }
             // ── the controller, centred: the only thing to navigate ──
-            GlassPanel(Modifier.fillMaxSize(), radius = Radii.Panel, strong = true) {
+            GlassPanel(Modifier.fillMaxSize(), radius = Radii.Panel) {
                 // a near-solid wash inside the panel: the wallpaper showing through made pills look focused
                 Column(Modifier.fillMaxSize().background(g.wash, RoundedCornerShape(Radii.Panel)).padding(horizontal = 14.dp, vertical = 10.dp)) {
                     // build 18 (GC11, gd-D02): this game's face positions aren't the ones printed on the controller — a note by its
@@ -2381,7 +2380,7 @@ private fun GameFacePills(choices: List<FaceChoice>, selected: FaceChoice, label
     // left of the group — it was glued to the last segment and read as one of its words
     Row(Modifier.width(width + 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         KeyHint(ThorButton.X)
-        GlassPanel(Modifier.weight(1f), radius = Radii.Row, strong = true) {
+        GlassPanel(Modifier.weight(1f), radius = Radii.Row) {
             Box(Modifier.padding(4.dp)) {
                 FaceStyleControl(choices, selected, labelOf, Modifier.fillMaxWidth(), itemsFocusable = focusable, compact = true, onPick = onPick)
             }

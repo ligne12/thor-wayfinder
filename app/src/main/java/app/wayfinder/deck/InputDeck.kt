@@ -76,7 +76,6 @@ import app.wayfinder.keyboard.ComposeOwner
 import app.wayfinder.ui.DISABLED_ALPHA
 import app.wayfinder.ui.LocalGlass
 import app.wayfinder.ui.ThorGlassTheme
-import app.wayfinder.ui.glassLight
 import app.wayfinder.ui.Radii
 import app.wayfinder.ui.fillChip
 import app.wayfinder.ui.fillSubtle
@@ -451,7 +450,6 @@ private fun DeckKeyCap(st: DeckState, k: DeckKey, modifier: UiModifier) {
                     else -> g.keyFill(functional = false)
                 }, shape,
             )
-            .glassLight(shape, g.dark)
             .border(1.dp, Brush.linearGradient(0f to g.rimTop.copy(alpha = 0.7f), 0.5f to Color.Transparent, 1f to g.rimBottom), shape)
             .pointerInput(k) {
                 // Held like a real key: down on touch, up on release (movement keys work).
@@ -584,7 +582,6 @@ private fun Trackpad(modifier: UiModifier, service: AccessibilityService?) {
             Box(
                 UiModifier.weight(1f).fillMaxHeight().clip(shape)
                     .background(g.fillWell, shape)
-                    .glassLight(shape, g.dark)
                     .border(1.dp, Brush.linearGradient(0f to g.rimTop, 0.5f to Color.Transparent, 1f to g.rimBottom), shape)
                     .pointerInput(touch, DeckSettings.directTouch) {
                         if (touch && DeckSettings.directTouch) { directGestures(this); return@pointerInput }
@@ -702,7 +699,6 @@ private fun SpeedStep(faster: Boolean, can: Boolean, modifier: UiModifier) {
     Box(
         modifier.clip(shape)
             .then(if (pressed) UiModifier.background(g.keyPressed, shape) else UiModifier.background(g.fillChip, shape))
-            .glassLight(shape, g.dark)
             .clearAndSetSemantics { contentDescription = if (faster) app.wayfinder.Say.FASTER else app.wayfinder.Say.SLOWER }
             .pointerInput(faster) {
                 detectTapGestures(onPress = { pressed = true; tryAwaitRelease(); pressed = false }) {
@@ -743,7 +739,6 @@ private fun AynMouseLink(modifier: UiModifier) {
     Box(
         modifier.clip(shape)
             .background(if (on) Brush.linearGradient(g.accentStops) else Brush.linearGradient(listOf(g.fillChip, g.fillChip)), shape)
-            .glassLight(shape, g.dark)
             .pointerInput(Unit) {
                 detectTapGestures {
                     val want = !on
@@ -774,7 +769,6 @@ private fun MouseButton(name: String, button: Int, modifier: UiModifier) {
     Box(
         modifier.clip(shape)
             .then(if (pressed) UiModifier.background(g.keyPressed, shape) else UiModifier.background(g.fillChip, shape))
-            .glassLight(shape, g.dark)
             .pointerInput(button) {
                 awaitEachGesture {
                     awaitFirstDown(); pressed = true; VirtualInput.mouseButton(button, true)

@@ -84,151 +84,27 @@ import kotlinx.coroutines.launch
  * ([selectedFill]), never a ring. The other shared controls (buttons, switch rows, headers, notices) are in GlassControls.kt.
  */
 
-/** Which slice of the shared two-screen aurora a window shows. */
-enum class AuroraSpan(val offset: Float) { TOP(0f), BOTTOM(1f) }
-
-// Aurora blob paths in a virtual canvas: x ∈ [0,1] of each screen's width, y ∈ [0,2]
-// in screen heights — the top screen shows y∈[0,1], the bottom screen y∈[1,2]. Both
-// windows live in one process and read the same uptime clock, so a blob drifting
-// down visibly passes from the top screen onto the bottom one.
-private class Blob(val wx: Float, val px: Float, val wy: Float, val py: Float, val r: Float)
-private val BLOBS = listOf(
-    Blob(wx = 0.090f, px = 0.0f, wy = 0.061f, py = 0.3f, r = 0.90f),
-    Blob(wx = 0.071f, px = 2.1f, wy = 0.083f, py = 1.9f, r = 0.82f),
-    Blob(wx = 0.105f, px = 4.2f, wy = 0.052f, py = 3.4f, r = 0.78f),
-    Blob(wx = 0.063f, px = 1.3f, wy = 0.074f, py = 5.0f, r = 0.86f),
-    Blob(wx = 0.082f, px = 3.3f, wy = 0.057f, py = 0.9f, r = 0.74f),
-    Blob(wx = 0.058f, px = 5.4f, wy = 0.069f, py = 2.6f, r = 0.84f),
-    Blob(wx = 0.097f, px = 0.8f, wy = 0.048f, py = 4.3f, r = 0.76f),
-)
-
 /**
- * Full-screen glass scaffold: an animated aurora (saturated colour blobs on a
- * base) that the translucent panels float over. Animation is read only in the
- * draw phase, so it never recomposes the UI.
+ * Full-screen scaffold. iiSU fork (part 6): iiSU's menu card ([menuCard]) behind the content, flat — no aurora, dot grid,
+ * lens or live blur (Thomas: the whole of Wayfinder in iiSU's settings look).
  */
 @Composable
-fun GlassScreen(
-    modifier: Modifier = Modifier,
-    span: AuroraSpan = AuroraSpan.TOP,
-    content: @Composable () -> Unit,
-) {
-    val g = LocalGlass.current
-    val realGlass = LocalRealGlass.current
-    // The aurora animates every frame; with real glass there's nothing to animate.
-    val clock = if (realGlass || g.blobAlpha == 0f) null else   // iiSU fork: a flat fallback has nothing to animate
-        androidx.compose.runtime.produceState(android.os.SystemClock.uptimeMillis() / 1000f) {
-        // The aurora drifts over tens of seconds: 30 fps looks identical to 120 and
-        // costs a quarter of the GPU (it matters with refraction, which redraws
-        // every panel through its lens on each aurora frame).
-        while (true) {
-            androidx.compose.runtime.withFrameMillis { value = android.os.SystemClock.uptimeMillis() / 1000f }
-            kotlinx.coroutines.delay(30)
-        }
-    }
-    // Refraction (GlassLens.kt): the backdrop is also recorded into a RenderNode the
-    // panels bend. Aurora → recorded every frame; snapshot → recorded once.
-    val backdrop = remember { GlassBackdrop() }
-    val lensOn = GlassLensConfig.supported && GlassLensConfig.enabled
-    backdrop.tick = clock
-    val drawAurora: androidx.compose.ui.graphics.drawscope.DrawScope.(Float) -> Unit = { t ->
-        drawRect(g.base)
-        val w = size.width; val h = size.height
-        BLOBS.forEachIndexed { i, b ->
-            val color = g.blobs[i % g.blobs.size]
-            val cx = (0.5f + 0.44f * kotlin.math.sin(t * b.wx + b.px)) * w
-            val cy = (1.0f + 0.88f * kotlin.math.sin(t * b.wy + b.py) - span.offset) * h
-            val rad = b.r * h
-            if (cy + rad < 0f || cy - rad > h) return@forEachIndexed  // off this screen
-            val c = androidx.compose.ui.geometry.Offset(cx, cy)
-            drawCircle(
-                Brush.radialGradient(
-                    0f to color.copy(alpha = g.blobAlpha),
-                    0.45f to color.copy(alpha = g.blobAlpha * 0.55f),
-                    1f to Color.Transparent,
-                    center = c, radius = rad,
-                ),
-                radius = rad, center = c,
-            )
-        }
-        drawRect(g.scrim)
-    }
-    val realTint: androidx.compose.ui.graphics.drawscope.DrawScope.() -> Unit = {
-        // Frost over the live blur: Appearance → Transparency (0.5 = the default look; a
-        // heavier frost read as opaque).
-        val clear = app.wayfinder.AppSettings.glassClarity
-        // A floor for readability: with little blur the app behind stays sharp and fights the
-        // text (fully see-through + no blur over a white app: the Hub washed out — critique
-        // 2026-09-25). The sharper the background, the more frost it keeps.
-        val floor = 0.42f - 0.24f * app.wayfinder.AppSettings.glassBlur
-        // build 18 (A4): over a light app the light theme keeps more frost (a floor of 0.55), plus its wash at 25 %: a veil
-        // that turns the hard edges behind into colour fields (ko-fi's buttons read as Wayfinder's). Dark keeps its numbers.
-        // iiSU fork: the frost is the theme's own background (iiSU's greys), not Wayfinder's blue-black / blue-white
-        drawRect(if (g.dark) g.base.copy(alpha = maxOf(0.72f - 0.62f * clear, floor))
-                 else g.base.copy(alpha = maxOf(0.64f - 0.56f * clear, 0.55f)))
-        if (!g.dark) drawRect(g.wash.copy(alpha = 0.25f))
-        drawRect(g.scrim)
-    }
-    // iiSU fork: iiSU's backdrop over whatever is drawn — its dot grid and a shade deepening toward the bottom
-    val density = androidx.compose.ui.platform.LocalDensity.current.density
-    val dots = remember(density, g.dark) { iisuDotPaint(density, g.dark) }
-    val iisuBackdrop: androidx.compose.ui.graphics.drawscope.DrawScope.() -> Unit = {
-        drawRect(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = if (g.dark) 0.10f else 0.045f))))
-        drawIntoCanvas { it.nativeCanvas.drawRect(0f, 0f, size.width, size.height, dots) }
-    }
+fun GlassScreen(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
     // build 18 (A14): the page's focused control's role, for its header's button legend (ButtonLegend.kt)
     val roles = remember { FocusRoleState() }
-    androidx.compose.runtime.CompositionLocalProvider(LocalGlassBackdrop provides backdrop, LocalFocusRole provides roles) {
-    Box(
-        modifier.fillMaxSize().drawBehind {
-            val hw = drawContext.canvas.nativeCanvas.isHardwareAccelerated
-            if (realGlass) {
-                // The system is blurring the real background behind this window, live —
-                // just add a tint so text stays readable, like frosted glass. (It can't be
-                // refracted: apps never get those pixels. Panels still catch the light.)
-                backdrop.ready = false
-                realTint()
-                iisuBackdrop()
-                return@drawBehind
-            }
-            val t = clock?.value ?: 0f
-            if (lensOn && hw) {
-                backdrop.record(this) { drawAurora(t) }
-                drawIntoCanvas { it.nativeCanvas.drawRenderNode(backdrop.node) }
-            } else drawAurora(t)
-            iisuBackdrop()
-        }
-    ) { content() }
-    }
-}
-
-
-
-/** iiSU fork: iiSU's dot grid as a repeating tile — white dots of 1.3 dp every 6.7 dp (measured on its home screens).
- *  One shader: the whole grid is a single drawRect. */
-private fun iisuDotPaint(density: Float, dark: Boolean): android.graphics.Paint {
-    val step = Math.round(6.7f * density).coerceAtLeast(4)
-    val tile = android.graphics.Bitmap.createBitmap(step, step, android.graphics.Bitmap.Config.ARGB_8888)
-    android.graphics.Canvas(tile).drawCircle(step / 2f, step / 2f, 0.65f * density,
-        android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { color = if (dark) 0x14FFFFFF else 0xFFFFFFFF.toInt() })
-    return android.graphics.Paint().apply {
-        shader = android.graphics.BitmapShader(tile, android.graphics.Shader.TileMode.REPEAT, android.graphics.Shader.TileMode.REPEAT)
+    androidx.compose.runtime.CompositionLocalProvider(LocalFocusRole provides roles) {
+        Box(modifier.fillMaxSize().background(menuCard(LocalGlass.current))) { content() }
     }
 }
 
 /**
- * The shared glass surface: translucent top-lit frost + specular rim (bright at
- * the top-left, fading through clear, faint at the bottom-right).
- * Build 18: [well] = an opaque base under the frost (A3: an unselected option — what's behind no longer tints it); on light
- * glass a 1 dp dark line just outside the edge (A4: a card keeps its edge over a white app).
+ * The shared card surface. iiSU fork (part 6): solid, as the control center's cards — [well] (unspecified: the theme's card
+ * colour, `g.surfaceModal`), iiSU's tight shadow below, its inner glow and a 1 dp line all round. No veil, no lens.
  */
 fun Modifier.glassSurface(
     g: GlassColors,
     shape: androidx.compose.ui.graphics.Shape,
-    raised: Boolean = false,
     well: Color = Color.Unspecified,
-    /** iiSU fork: false for a menu (iiSU's settings cards, the volume bar): the [well] alone, no home-tile veil over it. */
-    veil: Boolean = true,
 ): Modifier = this
     // iiSU fork: iiSU's tiles sit on a tight shadow just below. Drawn outside the shape only — an elevation shadow shows
     // through translucent glass and greys it.
@@ -246,9 +122,7 @@ fun Modifier.glassSurface(
         }
     }
     .clip(shape)
-    .glassLens(shape)
-    .then(if (well.isSpecified) Modifier.background(well, shape) else Modifier)
-    .then(if (veil) Modifier.background(if (raised) g.panelFillFocused else g.panelFill, shape) else Modifier)
+    .background(if (well.isSpecified) well else g.surfaceModal, shape)
     // iiSU fork: iiSU's inner glow — a light band inside the edge, fading out over about 5 dp (measured: +40 % white at the
     // edge on light, +14 % on dark). Strokes on the clipped edge: only their inner half shows.
     .drawWithCache {
@@ -257,7 +131,6 @@ fun Modifier.glassSurface(
         val bands = listOf(3.dp.toPx() to 0.5f, 6.dp.toPx() to 0.3f, 10.dp.toPx() to 0.25f)
         onDrawBehind { for ((w, k) in bands) drawOutline(o, Color.White.copy(alpha = a * k), style = Stroke(w)) }
     }
-    .glassLight(shape, g.dark)
     .border(1.dp, Brush.verticalGradient(listOf(g.rimTop, g.rimBottom)), shape)   // iiSU fork: a line all round
 
 /** A static frosted glass panel (no interaction). */
@@ -265,11 +138,10 @@ fun Modifier.glassSurface(
 fun GlassPanel(
     modifier: Modifier = Modifier,
     radius: androidx.compose.ui.unit.Dp = Radii.Panel,
-    strong: Boolean = false,
     content: @Composable () -> Unit,
 ) {
     val g = LocalGlass.current
-    Box(modifier.glassSurface(g, RoundedCornerShape(radius), raised = strong)) { content() }
+    Box(modifier.glassSurface(g, RoundedCornerShape(radius))) { content() }
 }
 
 /**
@@ -469,7 +341,6 @@ fun FocusableGlass(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     radius: androidx.compose.ui.unit.Dp = Radii.Panel,
-    strong: Boolean = true,
     focusRequester: androidx.compose.ui.focus.FocusRequester? = null,
     focusId: String? = null,
     contentAlignment: Alignment = Alignment.TopStart,
@@ -508,7 +379,7 @@ fun FocusableGlass(
         modifier
             .focusRequester(req)
             .focusIndicator(shape, onFill = selected)
-            .glassSurface(g, shape, raised = focused, well = well)
+            .glassSurface(g, shape, well = well)
             .onFocusChanged {
                 focused = it.isFocused
                 FocusTruth.report(req, it.hasFocus)          // device pass (P1-3): requestAfterLayout reads it

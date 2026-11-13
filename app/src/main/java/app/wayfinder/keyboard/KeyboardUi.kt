@@ -62,7 +62,6 @@ import app.wayfinder.ThorButton
 import app.wayfinder.ui.ButtonGlyph
 import app.wayfinder.ui.LocalGlass
 import app.wayfinder.ui.ScreenIcon
-import app.wayfinder.ui.glassLight
 import app.wayfinder.ui.Radii
 import app.wayfinder.ui.fillChip
 import app.wayfinder.ui.fillSubtle
@@ -279,7 +278,6 @@ private fun KeyCap(kb: KeyboardController, key: KeySpec, row: Int, col: Int, foc
             .clip(shape)
             .background(fill, shape)
             .then(if (pressed) Modifier.background(g.pressVeil, shape) else Modifier)
-            .glassLight(shape, g.dark)
             .border(
                 if (focused) 2.5.dp else 1.dp,
                 if (focused) Brush.linearGradient(g.accentStops)

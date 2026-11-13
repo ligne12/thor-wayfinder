@@ -130,7 +130,6 @@ val LocalGlass = staticCompositionLocalOf<GlassColors> { error("GlassColors not 
  * over the user's own background). [GlassScreen] then draws only a legibility tint
  * instead of the opaque aurora.
  */
-val LocalRealGlass = androidx.compose.runtime.compositionLocalOf { false }
 
 /** iiSU fork: iiSU's font. */
 // One file, registered at every weight a style asks for: Android then uses it as drawn instead of thickening it into a fake

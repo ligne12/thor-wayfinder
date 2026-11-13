@@ -117,11 +117,6 @@ private fun SheetFrame(onDismiss: () -> Unit, modifier: Modifier, first: FocusRe
     }
 }
 
-/** dev build 17 (WP8): a popup's or sheet's card — opaque [GlassColors.surfaceModal] with the glass rim and light, no frost and
- *  no lens (GlassSheet, Game controls' and Combos' popups, the tile picker). Their dim: [modalDim]. Build 18 (A12): fully
- *  opaque now (alpha FF); glassLight draws its bevel over it with the default SrcOver — nothing of the page comes through. */
-fun Modifier.modalSurface(g: GlassColors, shape: Shape): Modifier = this
-    .clip(shape)
-    .background(g.surfaceModal, shape)
-    .glassLight(shape, g.dark)
-    .border(1.dp, Brush.linearGradient(0f to g.rimTop, 0.42f to Color.Transparent, 1f to g.rimBottom), shape)
+/** dev build 17 (WP8): a popup's or sheet's card (GlassSheet, Game controls' and Combos' popups, the tile picker), opaque.
+ *  Their dim: [modalDim]. iiSU fork (part 6): the same solid card as everywhere ([glassSurface]). */
+fun Modifier.modalSurface(g: GlassColors, shape: Shape): Modifier = glassSurface(g, shape)

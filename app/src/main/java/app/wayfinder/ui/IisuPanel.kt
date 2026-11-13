@@ -96,7 +96,7 @@ fun IisuToggleTile(icon: ImageVector, label: String, on: Boolean, modifier: Modi
         }
         .onKeyEvent { gate.onKey(it) { click() } }
         .then(if (on) Modifier.clip(tile).background(Brush.linearGradient(g.accentStops), tile)
-              else Modifier.glassSurface(g, tile, well = g.surfaceModal, veil = false))
+              else Modifier.glassSurface(g, tile, well = g.surfaceModal))
         // not `clickable`: its focus is refused in touch mode (the quick panel opened with nothing focused)
         .focusable()
         .pointerInput(Unit) { detectTapGestures { mem?.last = reqNow; click() } }

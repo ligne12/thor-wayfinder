@@ -135,7 +135,7 @@ class MainActivity : ComponentActivity() {
                 ThemeMode.LIGHT -> false
                 ThemeMode.SYSTEM -> androidx.compose.foundation.isSystemInDarkTheme()
             }
-            androidx.compose.runtime.CompositionLocalProvider(app.wayfinder.ui.LocalRealGlass provides (realGlass.value && !AppSettings.flatLook)) {
+            run {   // iiSU fork (part 6): the Hub is opaque (iiSU's menu card), no live blur behind it
             ThorGlassTheme(dark = dark) {
             // build 18 (E6, D1): the status bar's icons follow the theme — over a light app the light theme's clock and battery
             // were white on white. The page's own colours decide (Your own colours on a light background: dark icons)
@@ -193,24 +193,6 @@ class MainActivity : ComponentActivity() {
         }
         // b18n (device b18j B1): a window that lands on another screen lays out there — no Wayfinder sheet stays over it ([landed])
         window.decorView.viewTreeObserver.addOnGlobalLayoutListener(landed)
-        // After setContent: the window's decor view must exist before blur is applied.
-        applyBackdrop()
-        if (Build.VERSION.SDK_INT >= 31)
-            windowManager.addCrossWindowBlurEnabledListener(mainExecutor, blurListener)
-    }
-
-    // ── Real glass: blur whatever is behind the (translucent) Hub window ──────
-    /** True while the system blurs the real background behind us (see LocalRealGlass). */
-    val realGlass = mutableStateOf(false)
-    private val blurListener = java.util.function.Consumer<Boolean> { applyBackdrop() }
-
-    /** Apply the Appearance → Backdrop choice; falls back to the aurora when the system disables blur (e.g. battery saver). */
-    fun applyBackdrop() {
-        val on = AppSettings.backdrop == Backdrop.WALLPAPER &&
-            Build.VERSION.SDK_INT >= 31 && windowManager.isCrossWindowBlurEnabled
-        if (Build.VERSION.SDK_INT >= 31) window.setBackgroundBlurRadius(if (on) AppSettings.glassBlurPx() else 0)
-        realGlass.value = on
-        companion?.applyBackdrop(on)
     }
 
     /** A page (and the controller that asked for it: Game controls' pad=) from a later intent. */
@@ -489,7 +471,6 @@ class MainActivity : ComponentActivity() {
         // the Hub takes the controller while it's open (the lock gives it back when it's left); b18i (D1): Game controls on
         // another screen than the game's too
         announceUp()
-        applyBackdrop()   // the setting may have changed while we were away
         showCompanion()
         // Belt-and-suspenders: also start the raw-input monitor when the app opens
         // (idempotent). onServiceConnected can be flaky; opening the app guarantees it.
@@ -548,7 +529,7 @@ class MainActivity : ComponentActivity() {
         val gc = gameControls
         if (!SheetRules.mayShow(other.displayId, gc?.displayNow(), gc?.isFinishing == true)) return
         try {
-            companion = CompanionPresentation(this, other).also { it.show(); it.applyBackdrop(realGlass.value) }
+            companion = CompanionPresentation(this, other).also { it.show() }
         } catch (e: Exception) { Log.w("ThorMain", "companion show failed: ${e.message}") }
     }
 
@@ -591,7 +572,6 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onDestroy() {
-        if (Build.VERSION.SDK_INT >= 31) runCatching { windowManager.removeCrossWindowBlurEnabledListener(blurListener) }
         super.onDestroy()
         windows -= this   // b18j (D1)
         window?.peekDecorView()?.viewTreeObserver?.takeIf { it.isAlive }?.removeOnGlobalLayoutListener(landed)   // b18n (B1)

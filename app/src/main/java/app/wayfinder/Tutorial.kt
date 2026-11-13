@@ -58,7 +58,6 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import kotlinx.coroutines.launch
-import app.wayfinder.ui.AuroraSpan
 import app.wayfinder.ui.FocusableGlass
 import app.wayfinder.ui.GlassPanel
 import app.wayfinder.ui.GlassScreen
@@ -192,7 +191,7 @@ fun TourPage(myDisplayId: Int, onDone: () -> Unit) {
         TourPractice.leaveShown = at in 1 until steps.lastIndex || (at == 0 && !toSetup)    // round 2: [TourNav]'s rule
         TourPractice.display = myDisplayId
     }
-    GlassScreen(span = if (myDisplayId == 0) AuroraSpan.TOP else AuroraSpan.BOTTOM) {
+    GlassScreen {
         Box(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(24.dp), contentAlignment = Alignment.Center) {
             // The card is centred in the space above; the buttons stay put at the bottom so
             // A-A-A never chases a moving Next button.
@@ -217,7 +216,7 @@ fun TourPage(myDisplayId: Int, onDone: () -> Unit) {
 @Composable
 private fun TourCard(s: TourStep, scroll: ScrollState) {
     val g = LocalGlass.current
-    GlassPanel(Modifier.fillMaxWidth(), radius = Radii.Large, strong = true) {
+    GlassPanel(Modifier.fillMaxWidth(), radius = Radii.Large) {
         // compact: both of the Thor's screens are about 470 dp tall
         Column(Modifier.padding(horizontal = 26.dp, vertical = 20.dp).verticalScroll(scroll), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {

@@ -140,7 +140,7 @@ private fun CompanionScreen(pkg: String, onClose: () -> Unit) {
     var tab by remember { mutableStateOf(0) }
     var web by remember { mutableStateOf<WebView?>(null) }
     var pinned by remember(key) { mutableStateOf(CompanionStore.url(ctx, key)) }
-    GlassScreen(span = app.wayfinder.ui.AuroraSpan.BOTTOM) {
+    GlassScreen {
         Column(Modifier.fillMaxSize().padding(10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
                 Text(game, color = g.textPrimary, style = MaterialTheme.typography.titleMedium, maxLines = 1,

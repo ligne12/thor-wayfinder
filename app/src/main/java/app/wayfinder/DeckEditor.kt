@@ -134,7 +134,7 @@ private fun EditField(hint: String, value: String, modifier: Modifier, onChange:
     val g = LocalGlass.current
     app.wayfinder.ui.ControllerTextField(value, onChange, modifier,
         textStyle = androidx.compose.ui.text.TextStyle(color = g.textPrimary, fontSize = androidx.compose.ui.unit.TextUnit(16f, androidx.compose.ui.unit.TextUnitType.Sp)),
-        placeholder = hint, surface = Modifier.glassSurface(g, androidx.compose.foundation.shape.RoundedCornerShape(app.wayfinder.ui.Radii.Control), raised = false),
+        placeholder = hint, surface = Modifier.glassSurface(g, androidx.compose.foundation.shape.RoundedCornerShape(app.wayfinder.ui.Radii.Control)),
         contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 14.dp, vertical = 12.dp))
 }
 

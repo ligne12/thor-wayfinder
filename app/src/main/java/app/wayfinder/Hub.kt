@@ -111,7 +111,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.repeatOnLifecycle
-import app.wayfinder.ui.AuroraSpan
 import app.wayfinder.ui.FocusableGlass
 import app.wayfinder.ui.GlassActionButton
 import app.wayfinder.ui.GlassListRow
@@ -273,7 +272,6 @@ fun HubNavHost(myDisplayId: Int, page: String, pad: String? = null, go: (String)
     }
 }
 
-private fun spanFor(displayId: Int) = if (displayId == 0) AuroraSpan.TOP else AuroraSpan.BOTTOM
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Live status shared by Home and Help.
@@ -348,7 +346,7 @@ private fun HubHome(myDisplayId: Int, go: (String) -> Unit) {
     remember { app.wayfinder.ui.ReturnFocus.take() }      // Home has no rows: a row to come back to is not for a later page
     @Suppress("UNUSED_VARIABLE") val v = ControlsStore.version.intValue + AppConfigStore.version.intValue + ExtPadsCtl.version.intValue
 
-    GlassScreen(span = spanFor(myDisplayId)) {
+    GlassScreen {
         Column(
             Modifier.fillMaxSize().verticalScroll(rememberScrollState())
                 .statusBarsPadding().navigationBarsPadding()
@@ -609,9 +607,7 @@ private fun panelSummary(ctx: android.content.Context): String =
 
 /** More's Appearance row. Build 18 (B11, MORE-06): "Your own colours" while they're on (it named a theme that did nothing),
  *  "Black" alone (no glass backdrop there); (hF21) "what's behind", the backdrop's own words. */
-private fun appearanceSummary(): String = when {
-    else -> "Follows iiSU · ${if (AppSettings.backdrop == Backdrop.WALLPAPER) "what's behind" else "aurora"}"
-}
+private fun appearanceSummary(): String = "Follows iiSU"
 
 /** Build 18 (B11, MORE-10): the Hub's More card — More's rows by their registry titles, lower case after the first
  *  ("Sound · stick lights · appearance · features · help"); a part turned off has no word (no Stick lights: hints instead). */
@@ -680,7 +676,7 @@ fun SubPage(
         { down -> inView.scrolledAway(); scrollScope.launch { pageScroll.animateScrollBy(if (down) 360f else -360f) } }
     }
     // b18r3 (P2-4): the page's focus view — its whole content reports (the header's Back pill too)
-    GlassScreen(span = spanFor(myDisplayId)) { androidx.compose.runtime.CompositionLocalProvider(app.wayfinder.ui.LocalFocusInView provides inView) {
+    GlassScreen { androidx.compose.runtime.CompositionLocalProvider(app.wayfinder.ui.LocalFocusInView provides inView) {
         Column(
             Modifier.fillMaxSize()
                 .statusBarsPadding().navigationBarsPadding()
@@ -1311,37 +1307,9 @@ private fun AppearancePage(myDisplayId: Int, onBack: () -> Unit) {
         // build 18 (B16, MORE-D02): ONE look choice — the four themes and Your colours (a separate switch left a theme choice
         // that did nothing). Your colours keep the theme for later; a theme turns your colours off and keeps them. (B3): the
         // registry's cards (Search opens the page on them)
-        val own = false   // iiSU fork: no theme choice here
-        SettingCard(NavCards.THEME, "Follows iiSU: its theme, accent and glass (iiSU › Settings › Appearance › Style and Glass)")
-        MoreOptions(cards = if (own) listOf(NavCards.HUB_SCREEN) else listOfNotNull(NavCards.BACKDROP, NavCards.SEE_THROUGH, NavCards.REFRACTION.takeIf { app.wayfinder.ui.GlassLensConfig.supported }, NavCards.HUB_SCREEN)) {
-        // build 18 (B11, MORE-07): your colours have no glass — one line instead of three settings that change nothing
-        if (own) Caption("Glass settings apply when Your own colours is off.")
-        else {
-        SettingCard(
-            NavCards.BACKDROP,
-            // build 18 (B11, hF21): "What's behind" — the glass blurs the screen under Wayfinder: the app there, or the wallpaper
-            // (it promised "your background")
-            if (AppSettings.backdrop == Backdrop.WALLPAPER) "The screen behind Wayfinder, blurred live — your wallpaper, or the app under it. If the system turns blur off (battery saver), it falls back to Aurora."
-            else "Wayfinder's drifting colour aurora, flowing across both screens",
-        ) {
-            GlassSegmentedControl(listOf("What's behind", "Aurora"), AppSettings.backdrop.ordinal, Modifier.fillMaxWidth()) {
-                AppSettings.setBackdropMode(Backdrop.values()[it])
-                (ctx as? MainActivity)?.applyBackdrop()
-            }
-        }
-        SettingCard(NavCards.SEE_THROUGH, "How much of what's behind shows through — here and in the quick panel (the AYN button)") {
-            GlassLookSliders(onBlur = { (ctx as? MainActivity)?.applyBackdrop() })
-        }
-        // dev build 17 (WP8): on / off — the card's switch (was On / Off segments)
-        if (app.wayfinder.ui.GlassLensConfig.supported) SettingCard(
-            NavCards.REFRACTION,
-            if (!AppSettings.refraction) "Plain frosted glass"
-            else if (AppSettings.backdrop == Backdrop.AURORA) "The glass bends the aurora at its edges and catches the light"
-            // build 18 (round 2): the backdrop option's name (hF21: "your background" promised the wallpaper)
-            else "The glass edges catch the light (what's behind stays live, so it's blurred, not bent)",
-            checked = AppSettings.refraction, onChecked = { AppSettings.setRefractionOn(it) },
-        )
-        }
+        SettingCard(NavCards.THEME, "Follows iiSU: its theme and accent (iiSU › Settings › Appearance › Style)")
+        // iiSU fork (part 6): the backdrop, see-through and refraction cards are gone — every surface is iiSU's solid card
+        MoreOptions(cards = listOf(NavCards.HUB_SCREEN)) {
         SettingCard(NavCards.HUB_SCREEN, "Where Wayfinder opens. On the top screen, \"Your combos\" fills the bottom one; on the bottom screen, the top stays free for your game.") {
             GlassSegmentedControl(listOf("Top screen", "Bottom screen"), if (AppSettings.hubOnTop) 0 else 1, Modifier.fillMaxWidth()) { i ->
                 AppSettings.setHubScreen(i == 0)
@@ -2064,7 +2032,7 @@ private fun LicenseBlock(text: String) {
             if ((down && bounds[1] > view.height - edge) || (up && bounds[0] < edge)) {
                 scope.launch { scroll.animateScrollBy(if (down) 360f else -360f) }; true
             } else false
-        }, radius = Radii.Control, strong = false) {
+        }, radius = Radii.Control) {
         Text(text, color = g.textSecondary, style = MaterialTheme.typography.bodySmall,
             modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp))
     }
@@ -2141,7 +2109,7 @@ private fun SearchField(q: String, onChange: (String) -> Unit, typing: Boolean, 
             Modifier.fillMaxWidth().onFocusChanged { tell(it.hasFocus) }.focusProperties { this.down = down },
             textStyle = androidx.compose.ui.text.TextStyle(color = g.textPrimary, fontSize = 17.sp),
             placeholder = "Try “screenshot”, “lock”, “dark”…",
-            surface = Modifier.glassSurface(g, shape, raised = true), shape = shape,
+            surface = Modifier.glassSurface(g, shape), shape = shape,
             contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 52.dp, end = 18.dp, top = 15.dp, bottom = 15.dp),
             startEditing = typing, imeAction = androidx.compose.ui.text.input.ImeAction.Search, onSubmit = onSubmit, gateFocus = gate)
         Icon(Icons.Rounded.Search, null, tint = g.textPrimary, modifier = Modifier.align(Alignment.CenterStart).padding(start = 18.dp).size(22.dp))

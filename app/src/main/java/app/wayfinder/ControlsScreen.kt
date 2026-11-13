@@ -33,7 +33,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.unit.dp
-import app.wayfinder.ui.AuroraSpan
 import app.wayfinder.ui.FocusableGlass
 import app.wayfinder.ui.GlassPanel
 import app.wayfinder.ui.GlassScreen
@@ -156,7 +155,7 @@ fun ControlsScreen(myDisplayId: Int, pkg: String? = null, onBack: () -> Unit, go
         entry.request(id)
     }
 
-    GlassScreen(span = if (myDisplayId == 0) AuroraSpan.TOP else AuroraSpan.BOTTOM) {
+    GlassScreen {
       Box(Modifier.fillMaxSize()) {
         Column(
             Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()
@@ -452,7 +451,7 @@ private fun PickRow(title: String, line: String, now: Trigger?, selected: Boolea
 @Composable
 private fun TriggerChip(trigger: Trigger?, highlight: Boolean = true) {
     val g = LocalGlass.current
-    GlassPanel(radius = Radii.Control, strong = trigger != null && highlight) {
+    GlassPanel(radius = Radii.Control) {
         Box(Modifier.padding(horizontal = 10.dp, vertical = 6.dp)) {
             if (trigger == null) Text("Not set", color = g.textTertiary, style = MaterialTheme.typography.labelLarge,
                 modifier = Modifier.padding(vertical = 4.dp, horizontal = 2.dp))
@@ -558,7 +557,7 @@ private fun CaptureCard(action: ThorAction, pkg: String?, onDone: () -> Unit, op
     }
     LaunchedEffect(result) { if (result != null) saveFocus.requestAfterLayout() }
 
-    GlassPanel(Modifier.fillMaxWidth(), radius = Radii.Tile, strong = true) {
+    GlassPanel(Modifier.fillMaxWidth(), radius = Radii.Tile) {
         Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             // build 18 (C3, VD-02): a popup's header like every other — Cancel on the left with the hand's Back button, what
             // the action does under the title (the quiet Cancel buttons are gone)

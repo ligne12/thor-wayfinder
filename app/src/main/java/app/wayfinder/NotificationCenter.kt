@@ -280,7 +280,7 @@ object NotificationCenter {
                     true
                 } else gate.onKey(e, open)
             }
-            .glassSurface(g, shape, well = g.surfaceModal, veil = false)
+            .glassSurface(g, shape, well = g.surfaceModal)
             .clickable { open() }
             .then(if (!n.clearable) Modifier else Modifier.pointerInput(n.key) {
                 // swiped aside past 30 % of its width: cleared (an ongoing one doesn't move)

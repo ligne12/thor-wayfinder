@@ -150,7 +150,7 @@ object QuickPanelWindow {
         startMin = runCatching { Settings.System.getFloat(cr, "min_refresh_rate") }.getOrDefault(60f)
         startPeak = runCatching { Settings.System.getFloat(cr, "peak_refresh_rate") }.getOrDefault(60f)
         // Wide screen (the top one): a 540 dp sheet on the right, the game dimmed beside it.
-        // Narrow screen (the bottom one): full screen, the app under it frosted (live blur).
+        // Narrow screen (the bottom one): full screen, opaque (iiSU's menu card).
         // 1.3.2: the display's REAL size — this context's cached metrics sometimes answered the TOP screen's
         // 1920 px for the bottom one: the panel then took its side-sheet form there (no blur, its own backdrop)
         // b18g (GitHub #49): the width from ScreenSize. On display 0, d carries the service's Resources, so its real
@@ -159,7 +159,6 @@ object QuickPanelWindow {
         val m = android.util.DisplayMetrics().also { @Suppress("DEPRECATION") d.getRealMetrics(it) }
         val sheet = (ScreenSize.real(service, display)?.x ?: m.widthPixels) / m.density > 700
         val takes = AppSettings.panelTakesController
-        val blur = !sheet && android.os.Build.VERSION.SDK_INT >= 31 && wm.isCrossWindowBlurEnabled
         val owner = PanelOwner()
         val root = Root(ctx, back = {
             if (owner.onBackPressedDispatcher.hasEnabledCallbacks()) owner.onBackPressedDispatcher.onBackPressed() else close()
@@ -170,7 +169,6 @@ object QuickPanelWindow {
             setContent {
                 val dark = app.wayfinder.ui.GlassTokens.isDark(ctx)   // iiSU fork: follows a theme change while open
                 androidx.compose.runtime.CompositionLocalProvider(
-                    app.wayfinder.ui.LocalRealGlass provides (blur && !AppSettings.flatLook),
                     androidx.activity.compose.LocalOnBackPressedDispatcherOwner provides owner,
                 ) {
                     // dev build 16 (WP7): one Back path on the panel's dispatcher, its sheets, the hand's names (dev build 15, WP2)
@@ -200,10 +198,6 @@ object QuickPanelWindow {
                 gravity = android.view.Gravity.END or android.view.Gravity.TOP
                 // touch-only (#31): the game stays in view, undimmed — you keep playing it
                 if (takes) { flags = flags or android.view.WindowManager.LayoutParams.FLAG_DIM_BEHIND; dimAmount = 0.45f }
-            }
-            if (blur) {
-                flags = flags or android.view.WindowManager.LayoutParams.FLAG_BLUR_BEHIND
-                blurBehindRadius = AppSettings.glassBlurPx()
             }
             title = "WayfinderQuickPanel"
         }
@@ -302,7 +296,7 @@ private fun PanelBody(first: FocusRequester, close: () -> Unit) {
 /** iiSU fork: a card of the control center — the notification center's card surface, 20 dp corners. */
 @Composable
 private fun Modifier.iisuCard(): Modifier = LocalGlass.current.let { g ->
-    glassSurface(g, RoundedCornerShape(20.dp), well = g.surfaceModal, veil = false)
+    glassSurface(g, RoundedCornerShape(20.dp), well = g.surfaceModal)
 }
 
 /**
