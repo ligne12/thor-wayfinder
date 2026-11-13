@@ -872,10 +872,12 @@ class ForegroundAppService : AccessibilityService() {
     @Volatile private var recentsDisplay: Int? = null
     @Volatile private var recentsEnteredAt = 0L
 
-    private fun enterRecents(displayId: Int, retry: Boolean = false) {
-        // The window list can lag the event a little: check now, and once more shortly after.
+    private fun enterRecents(displayId: Int, host: String, waited: Long = 0) {
+        // The window list lags the event: Recents' overview shows a moment after it. iiSU fork: looked at again while the window
+        // in front is still Recents' own ([RecentsModel.opening]) — one look 350 ms later missed it about one swipe in three,
+        // and the multitask closed over Android's Recents
         if (!recentsStillOpen(displayId)) {
-            if (!retry) handler.postDelayed({ enterRecents(displayId, retry = true) }, 350)
+            if (RecentsModel.opening(topAppPackage(displayId), host, waited)) handler.postDelayed({ enterRecents(displayId, host, waited + 100) }, 100)
             else { Log.d(TAG, "recents: event on $displayId but not on top — ignored"); recentsLeft() }   // a swipe that went home
             return
         }
@@ -1140,6 +1142,11 @@ class ForegroundAppService : AccessibilityService() {
             .maxByOrNull { it.layer } ?: return false
         return top.root?.findAccessibilityNodeInfosByViewId("com.android.launcher3:id/overview_panel")?.isNotEmpty() == true
     }
+
+    /** iiSU fork: the package of display [d]'s top app window; null: none, or unreadable. */
+    private fun topAppPackage(d: Int): String? = runCatching { windowsOnAllDisplays.get(d) }.getOrNull().orEmpty()
+        .filter { it.type == android.view.accessibility.AccessibilityWindowInfo.TYPE_APPLICATION }
+        .maxByOrNull { it.layer }?.root?.packageName?.toString()
 
     /** b18j: Recents is provably gone from display [d] — its top app window is read and shows no overview. An unreadable window
      *  proves nothing ([recentsStillOpen] says "not open" for it): the window list changes often while Recents is up. */
@@ -2379,7 +2386,7 @@ class ForegroundAppService : AccessibilityService() {
                 // over it; and once Recents was left for the home or another card, the next look would bring it back again
                 swapWatchGen++
                 coverRecents(displayId ?: focusedDisplayId())   // iiSU fork: the multitask over it, at once
-                enterRecents(displayId ?: focusedDisplayId())
+                enterRecents(displayId ?: focusedDisplayId(), pkg)
             } else if (recentsDisplay != null) for (ms in listOf(250L, 900L)) handler.postDelayed({
                 // twice: Recents can still be animating out at the first look
                 val d = recentsDisplay

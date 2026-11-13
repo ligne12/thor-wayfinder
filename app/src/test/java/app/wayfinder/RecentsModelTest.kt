@@ -16,6 +16,15 @@ class RecentsModelTest {
 
     private fun t(id: Int, pkg: String, at: Long, d: Int = 0) = RecentTask(id, pkg, d, at)
 
+    @Test fun opening_waitsWhileRecentsHostIsInFront() {
+        val host = "com.android.launcher3"
+        assertEquals(true, RecentsModel.opening(host, host, 100))                       // its overview not drawn yet
+        assertEquals(true, RecentsModel.opening(null, host, 400))                       // unreadable: no proof either way
+        assertEquals(false, RecentsModel.opening("com.iisulauncher", host, 100))        // the swipe went home
+        assertEquals(false, RecentsModel.opening("com.android.settings", host, 100))    // back to the app
+        assertEquals(false, RecentsModel.opening(host, host, RecentsModel.OPENING_MS))  // never came
+    }
+
     @Test fun order_oldestFirst_tieByTaskId() {
         assertEquals(listOf(3, 1, 2), RecentsModel.order(listOf(t(1, "a", 20), t(2, "b", 30), t(3, "c", 10))).map { it.taskId })
         assertEquals(listOf(1, 2), RecentsModel.order(listOf(t(2, "b", 5), t(1, "a", 5))).map { it.taskId })

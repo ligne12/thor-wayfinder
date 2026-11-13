@@ -18,6 +18,16 @@ object RecentsModel {
         if (id == null || d == null || at == null || (type != 1 && type != -1)) null else RecentTask(id, f[1], d, at)
     }
 
+    /** How long Recents' window may take to show its overview after its event (up to ~0.6 s seen on the Thor). */
+    const val OPENING_MS = 1500L
+
+    /**
+     * Recents' window event comes while the swipe is still on its way; its overview shows a moment later. Still opening: the app
+     * window in front ([top], null if unreadable) is the one that hosts Recents ([host]), for less than [OPENING_MS]. Anything
+     * else in front: the swipe went home, or back to the app.
+     */
+    fun opening(top: String?, host: String, waitedMs: Long): Boolean = waitedMs < OPENING_MS && (top == null || top == host)
+
     /** The carousel's order, Android's: the oldest on the left. */
     fun order(tasks: List<RecentTask>): List<RecentTask> = tasks.sortedWith(compareBy({ it.lastActive }, { it.taskId }))
 
