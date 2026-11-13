@@ -984,12 +984,13 @@ class ForegroundAppService : AccessibilityService() {
         val always = launcherPackages.toSet() + packageName
         // the other screen's app, tracked and as its window shows (tracking can lag): "Clear all" must not close a game there
         val other = { (if (d == PRIMARY_DISPLAY) secondDisplayId() else PRIMARY_DISPLAY)?.let { listOfNotNull(displayApps[it], appOnDisplay(it)) }.orEmpty() }
-        if (!RecentsSource.tasks.isNullOrEmpty()) {
+        // an empty list too: the multitask says so ("No recent apps"), never Android's empty Recents
+        if (RecentsSource.tasks != null) {
             RecentsScreen.show(this, d, origin, always, other)
             RecentsSource.refreshAsync(this)
         } else RecentsSource.refreshAsync(this) { ok ->
             Log.d(TAG, "recents list: $ok, ${RecentsSource.tasks?.size} tasks")
-            if (ok && !RecentsSource.tasks.isNullOrEmpty() && recentsLeftAt < at && RecentsScreen.show(this, d, origin, always, other))
+            if (ok && recentsLeftAt < at && RecentsScreen.show(this, d, origin, always, other))
                 Overlays.release(Held.RECENTS)   // the hint Android's Recents got meanwhile: none over the multitask
         }
     }

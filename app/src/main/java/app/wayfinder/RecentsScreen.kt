@@ -29,6 +29,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.GridView
 import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.LockOpen
 import androidx.compose.material3.Icon
@@ -311,8 +312,9 @@ object RecentsScreen {
         // on its way out the cards stay as they were: Clear all's list, read again meanwhile, emptied the screen before it went
         val list = cards.let { live -> val frozen = remember(leaving) { live }; if (leaving) frozen else live }
         LaunchedEffect(list) {
-            // nothing left to show: Android's own empty Recents — unless the last card was just closed (the home is coming)
-            if (list.isEmpty()) { if (!leaving) close(); return@LaunchedEffect }
+            // nothing to show: the empty multitask says so (Android's own empty Recents, with Wayfinder's controller hint over it,
+            // fitted neither look — Thomas)
+            if (list.isEmpty()) return@LaunchedEffect
             if (list.none { it.taskId == selectedId }) selectedId = list.getOrNull(RecentsModel.initial(list, origin))?.taskId ?: -1
         }
         val ratios = remember { HashMap<Int, Float>() }
@@ -334,7 +336,11 @@ object RecentsScreen {
                     if (first[0]) { first[0] = false; state.scrollToItem(idx, off) } else state.animateScrollToItem(idx, off)
                 }
                 Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
-                    LazyRow(Modifier.fillMaxWidth(), state = state, contentPadding = PaddingValues(horizontal = half),
+                    if (list.isEmpty()) Column(Modifier.height(cardH + 46.dp), verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically),
+                        horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(Icons.Rounded.GridView, null, tint = LocalGlass.current.textTertiary, modifier = Modifier.size(56.dp))
+                        Text("No recent apps", color = LocalGlass.current.textSecondary, style = MaterialTheme.typography.titleMedium)
+                    } else LazyRow(Modifier.fillMaxWidth(), state = state, contentPadding = PaddingValues(horizontal = half),
                         horizontalArrangement = Arrangement.spacedBy(24.dp), verticalAlignment = Alignment.Bottom) {
                         items(list, key = { it.taskId }) { t -> Card(ctx, t, width(t), cardH, t.taskId == selectedId) }
                     }
@@ -347,9 +353,11 @@ object RecentsScreen {
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
                         Text(ram, color = LocalGlass.current.textSecondary, style = MaterialTheme.typography.labelLarge)
-                        GlassButton("Screenshot", { screenshot() })
-                        GlassButton(if (clearArmed) "Select again: clear all" else "Clear all", { clearAll() },
-                            kind = if (clearArmed) app.wayfinder.ui.ButtonKind.DANGER else app.wayfinder.ui.ButtonKind.NORMAL)
+                        if (list.isNotEmpty()) {
+                            GlassButton("Screenshot", { screenshot() })
+                            GlassButton(if (clearArmed) "Select again: clear all" else "Clear all", { clearAll() },
+                                kind = if (clearArmed) app.wayfinder.ui.ButtonKind.DANGER else app.wayfinder.ui.ButtonKind.NORMAL)
+                        }
                     }
                 }
             }
