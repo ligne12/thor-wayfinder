@@ -1,5 +1,53 @@
 # Wayfinder — For the AYN Thor
 
+> [!IMPORTANT]
+> **This is a personal fork, made for one Thor (mine), in iiSU's look.** Wayfinder is made by
+> **[Thor Wayfinder](https://github.com/Thor-Wayfinder/thor-wayfinder)**: the app, its design and almost all of this
+> code are theirs. Get Wayfinder from the [original project](https://github.com/Thor-Wayfinder/thor-wayfinder/releases/latest),
+> and if it makes your Thor better, [support its author on Ko-fi](https://ko-fi.com/thorwayfinder).
+> Nothing is distributed from this fork: no releases, no APKs.
+
+## This fork: Wayfinder in iiSU's look
+
+<p align="center">
+<a href="docs/media/iisu-look.mp4"><img src="docs/media/iisu-look-poster.jpg" alt="Wayfinder in iiSU's look — the video" width="100%"></a><br>
+<sub><a href="docs/media/iisu-look.mp4">▶ Watch the video</a> (81 s, filmed on my Thor)</sub>
+</p>
+
+**Why.** On my Thor, iiSU is the launcher on both screens. Wayfinder's panels (glass, aurora, blur) sat on top
+of it and looked like another device. This fork dresses every Wayfinder surface in iiSU's own settings look, and
+follows iiSU's appearance settings, read from iiSU itself: light or dark, colours, selection gradient, font.
+Switch iiSU to dark and Wayfinder follows, live.
+
+**What changed** (everything else is the original Wayfinder):
+
+- **Control center** (AYN button): iiSU's sections on its menu card — Screens, Levels (brightness and volume rows
+  whose chevron opens the top and bottom screens in place), Shortcuts as iiSU tiles — under a round
+  Arrange / Wayfinder / Close header.
+- **Notification center** (new): Android's shade is replaced by a sheet that slides down from the top of the top
+  screen — Android's switches as one row of tiles, notifications as cards in two columns.
+- **Volume bar** (new): Wayfinder's own bar over the game instead of Android's, with held-key repeat and Silent.
+- **Multitask** (new): a carousel over Android's Recents, driven with the controller — the screen each app is on,
+  lock, screenshot, Clear all, memory in use — that closes without a flash of Android's layout.
+- **The whole app in iiSU's settings look**: the Hub, its pages and sheets, the keyboard and the deck, the cues and
+  the FPS counter (on iiSU's menu card, in its font), iiSU's slider everywhere, and a sober focus — iiSU's
+  focused-row tint — instead of a halo.
+- **Removed**: aurora, dots, glass, see-through and blur, with their Appearance settings: the look comes from iiSU now.
+
+**Needs** iiSU on the Thor: its settings and its fonts are read on the device, through the Thor's system service
+like the rest of Wayfinder, and never copied into this repository.
+
+<table>
+<tr><td width="50%" align="center"><img src="docs/media/iisu-control-center-light.jpg" alt="Control center, light"><br><sub><b>Control center</b> (AYN button), iiSU light</sub></td><td width="50%" align="center"><img src="docs/media/iisu-control-center-dark.jpg" alt="Control center, dark"><br><sub><b>Control center</b>, iiSU dark</sub></td></tr>
+<tr><td width="50%" align="center"><img src="docs/media/iisu-volume.jpg" alt="Volume bar over a game"><br><sub><b>Volume bar</b>, over the game</sub></td><td width="50%" align="center"><img src="docs/media/iisu-notifications.jpg" alt="Notification center"><br><sub><b>Notification center</b>, pulled down from the top</sub></td></tr>
+<tr><td width="50%" align="center"><img src="docs/media/iisu-multitask.jpg" alt="Multitask"><br><sub><b>Multitask</b>, with the controller</sub></td><td width="50%" align="center"><img src="docs/media/iisu-hub.jpg" alt="The Hub"><br><sub><b>The Hub</b>, in iiSU's settings look</sub></td></tr>
+</table>
+
+## The original Wayfinder
+
+Below is the original project's README, unchanged: it describes Wayfinder as its author makes it — downloads,
+the wiki, bug reports and support are all theirs.
+
 **Two screens, one controller.** Wayfinder moves apps between the Thor's screens without restarting them,
 sends the controller where you want it, gives every game its own buttons, and puts the Thor's settings one
 press away — all without leaving your game.
