@@ -691,9 +691,10 @@ private fun LevelsCard() {
     // as iiSU draws a slider: its white thumb and near-white track vanish on a white card
     val g = LocalGlass.current
     IisuSectionTitle(Icons.Rounded.Tune, "Levels")
-    Column(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 4.dp)) {
+    Column(Modifier.fillMaxWidth().padding(horizontal = 14.dp)) {
         BrightnessSliders(collapsible = true, title = "Brightness", dots = false)
-        Box(Modifier.fillMaxWidth().height(1.dp).background(g.textTertiary.copy(alpha = 0.35f)))
+        // each row centred in its space: 6 dp on both sides, as the panel's spacing above and below (Thomas: the thumbs touched it)
+        Box(Modifier.padding(vertical = 6.dp).fillMaxWidth().height(1.dp).background(g.textTertiary.copy(alpha = 0.35f)))
         VolumeSliders(collapsible = true, title = "Volume", dots = false)
     }
 }
