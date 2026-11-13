@@ -24,7 +24,9 @@ changeant les briques visuelles partagées plutôt que chaque page.
 - Le Hub devient opaque : l'appli derrière lui n'est plus visible. Le flou demandé derrière les fenêtres devenues opaques
   (le Hub, l'écran compagnon, le centre de contrôle) est retiré : il ne se voit plus et coûte au GPU (défaut mineur du
   morceau 5).
-- Les réglages « Glass » d'iiSU (opacité, flou, teinte) n'ont plus d'effet sur les surfaces de Wayfinder.
+- Les réglages « Glass » d'iiSU (opacité, flou, teinte) n'ont plus d'effet sur les surfaces de Wayfinder. Les réglages de
+  Wayfinder qui n'en ont plus non plus (More › Appearance : le fond « What's behind / Aurora », la transparence, la
+  réfraction) sont retirés de la page et de la recherche.
 
 ## Les cartes et les tuiles
 
