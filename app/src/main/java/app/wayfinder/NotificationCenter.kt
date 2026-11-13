@@ -192,7 +192,7 @@ object NotificationCenter {
             Box(Modifier.fillMaxWidth().heightIn(max = maxHeight * 0.85f).graphicsLayer { translationY = -out * size.height }
                 .background(menuCard(g), RoundedCornerShape(bottomStart = 20.dp, bottomEnd = 20.dp))
                 .pointerInput(Unit) { detectTapGestures { } }   // a tap on the sheet itself stays there (the veil under it closes)
-                .padding(20.dp)) {
+                .padding(start = 20.dp, top = 36.dp, end = 20.dp, bottom = 20.dp)) {   // Thomas: the tiles looked stuck to the top
                 Sheet(ctx)
             }
         }
