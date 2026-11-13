@@ -15,16 +15,18 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -179,15 +181,17 @@ object NotificationCenter {
     @Composable
     private fun Center(ctx: Context) {
         val g = LocalGlass.current
-        // 0: in; 1: out to the right. Out again after a close: the window goes
+        // 0: in; 1: out above the screen. Out again after a close: the window goes
         val out by animateFloatAsState(if (shown) 0f else 1f, tween(200), label = "sheet",
             finishedListener = { if (it >= 1f && !shown) remove() })
-        Row(Modifier.fillMaxSize()) {
+        BoxWithConstraints(Modifier.fillMaxSize()) {
             // the veil: the game stays in view; a tap closes
-            Box(Modifier.weight(0.4f).fillMaxHeight().graphicsLayer { alpha = 1f - out }
+            Box(Modifier.fillMaxSize().graphicsLayer { alpha = 1f - out }
                 .background(Color.Black.copy(alpha = 0.25f)).pointerInput(Unit) { detectTapGestures { close() } })
-            Box(Modifier.weight(0.6f).fillMaxHeight().graphicsLayer { translationX = out * size.width }
-                .background(menuCard(g), RoundedCornerShape(topStart = 20.dp, bottomStart = 20.dp))
+            // iiSU fork: the sheet comes down from the top, full width, as tall as its content up to 85 % of the screen
+            Box(Modifier.fillMaxWidth().heightIn(max = maxHeight * 0.85f).graphicsLayer { translationY = -out * size.height }
+                .background(menuCard(g), RoundedCornerShape(bottomStart = 20.dp, bottomEnd = 20.dp))
+                .pointerInput(Unit) { detectTapGestures { } }   // a tap on the sheet itself stays there (the veil under it closes)
                 .padding(20.dp)) {
                 Sheet(ctx)
             }
@@ -205,40 +209,43 @@ object NotificationCenter {
         }
         val items = NotificationModel.visible(NotificationsListener.items)
         var pull by remember { mutableFloatStateOf(0f) }
-        LazyColumn(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            item {
-                // the tiles, and a pull up from here closes the sheet (the list below scrolls)
-                Column(Modifier.pointerInput(Unit) {
-                    detectVerticalDragGestures(onDragEnd = { if (pull < -with(density) { 80.dp.toPx() }) close(); pull = 0f },
-                        onDragCancel = { pull = 0f }) { _, dy -> pull += dy }
-                }, verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    for (row in TILES.mapNotNull { id -> tiles[id] }.chunked(5)) {
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                            for (tile in row) IisuToggleTile(tile.icon, tile.label, tile.on, Modifier.weight(1f), height = 64.dp,
-                                description = "${tile.label}: ${tile.value ?: ""}") { tile.action() }
-                            repeat(5 - row.size) { Spacer(Modifier.weight(1f)) }
+        // a pull up on the tiles or the title closes the sheet (the cards below scroll); the tiles alone sit too near the
+        // top for 80 dp of travel
+        val pullUp = Modifier.pointerInput(Unit) {
+            detectVerticalDragGestures(onDragEnd = { if (pull < -with(density) { 80.dp.toPx() }) close(); pull = 0f },
+                onDragCancel = { pull = 0f }) { _, dy -> pull += dy }
+        }
+        // iiSU fork: the cards in two columns, filled row by row (the newest top left); the handle under them says up closes
+        Column {
+            LazyVerticalGrid(GridCells.Fixed(2), Modifier.weight(1f, fill = false),
+                verticalArrangement = Arrangement.spacedBy(12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    Row(Modifier.fillMaxWidth().then(pullUp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        for (tile in TILES.mapNotNull { id -> tiles[id] }) IisuToggleTile(tile.icon, tile.label, tile.on,
+                            Modifier.weight(1f), height = 64.dp, description = "${tile.label}: ${tile.value ?: ""}") { tile.action() }
+                    }
+                }
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    Row(Modifier.fillMaxWidth().then(pullUp).padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text("Notifications", color = g.textPrimary, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+                        GlassButton(if (clearArmed) "Select again: clear all" else "Clear notifications", { NotificationsListener.clearAll() },
+                            icon = Icons.Rounded.DeleteSweep, enabled = NotificationModel.anyClearable(items),
+                            kind = if (clearArmed) app.wayfinder.ui.ButtonKind.DANGER else app.wayfinder.ui.ButtonKind.NORMAL)
+                    }
+                }
+                if (items.isEmpty()) item(span = { GridItemSpan(maxLineSpan) }) {
+                    Column(Modifier.fillMaxWidth().padding(vertical = 24.dp), horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Box(Modifier.size(56.dp).clip(CircleShape).background(g.textTertiary.copy(alpha = 0.12f)), contentAlignment = Alignment.Center) {
+                            Icon(Icons.Rounded.Notifications, null, tint = g.textPrimary, modifier = Modifier.size(28.dp))
                         }
+                        Text("No notifications", color = g.textPrimary, style = MaterialTheme.typography.titleMedium)
                     }
                 }
+                items(items, key = { it.key }) { n -> Card(ctx, n) }
             }
-            item {
-                Row(Modifier.fillMaxWidth().padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text("Notifications", color = g.textPrimary, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
-                    GlassButton(if (clearArmed) "Select again: clear all" else "Clear notifications", { NotificationsListener.clearAll() },
-                        icon = Icons.Rounded.DeleteSweep, enabled = NotificationModel.anyClearable(items),
-                        kind = if (clearArmed) app.wayfinder.ui.ButtonKind.DANGER else app.wayfinder.ui.ButtonKind.NORMAL)
-                }
-            }
-            if (items.isEmpty()) item {
-                Column(Modifier.fillMaxWidth().padding(top = 40.dp), horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Box(Modifier.size(56.dp).clip(CircleShape).background(g.textTertiary.copy(alpha = 0.12f)), contentAlignment = Alignment.Center) {
-                        Icon(Icons.Rounded.Notifications, null, tint = g.textPrimary, modifier = Modifier.size(28.dp))
-                    }
-                    Text("No notifications", color = g.textPrimary, style = MaterialTheme.typography.titleMedium)
-                }
-            }
-            items(items, key = { it.key }) { n -> Card(ctx, n) }
+            Box(Modifier.align(Alignment.CenterHorizontally).padding(top = 8.dp).size(40.dp, 5.dp).clip(CircleShape)
+                .background(g.textTertiary.copy(alpha = 0.5f)))
         }
     }
 
