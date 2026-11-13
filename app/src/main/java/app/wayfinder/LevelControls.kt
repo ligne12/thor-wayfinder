@@ -53,7 +53,8 @@ import kotlin.math.roundToInt
  * row at its ends (the quick panel's cards side by side).
  */
 @Composable
-fun BrightnessSliders(compact: Boolean = false, collapsible: Boolean = compact, sideExit: Boolean = false) {
+fun BrightnessSliders(compact: Boolean = false, collapsible: Boolean = compact, sideExit: Boolean = false, title: String? = null,
+                      dots: Boolean = true) {
     val ctx = LocalContext.current
     // The Thor's two built-in screens, from Android itself (the service's list is empty until
     // it runs — a fresh install showed no "Bottom" row).
@@ -75,12 +76,13 @@ fun BrightnessSliders(compact: Boolean = false, collapsible: Boolean = compact, 
     val fold = rememberFold(collapsible, open) { open = false }
     Column(fold.modifier, verticalArrangement = Arrangement.spacedBy(if (compact) 4.dp else 2.dp)) {
         val ready = levels.size == ids.size
-        LevelRow(if (compact) null else Icons.Rounded.LightMode, if (compact) "Both" else "Both screens", compact = compact, value = if (ready) "${Math.round(ScreenLevels.snap(ScreenLevels.bothPos(levels)) * 100)} %" else null,
+        // iiSU fork: [title] names the row instead of "Both screens" (the control center's setting rows, iiSU's look)
+        LevelRow(if (compact) null else Icons.Rounded.LightMode, title ?: if (compact) "Both" else "Both screens", compact = compact, dots = dots, value = if (ready) "${Math.round(ScreenLevels.snap(ScreenLevels.bothPos(levels)) * 100)} %" else null,
             pos = if (ready) ScreenLevels.bothPos(levels) else null, sideExit = sideExit,
             trailing = if (collapsible) ({ ExpandButton(open, fold.expandFocus) { open = !open } }) else null) { p ->
             levels = ScreenLevels.shiftBoth(ctx, levels, p - ScreenLevels.bothPos(levels))
         }
-        if (open) for (d in ids) LevelRow(null, name(d == 0, compact), compact = compact, value =
+        if (open) for (d in ids) LevelRow(null, name(d == 0, compact), compact = compact, dots = dots, value =
             levels[d]?.let { "${ScreenLevels.percent(it)} %" }, pos = levels[d]?.let { ScreenLevels.toSlider(it) }, sideExit = sideExit,
             trailing = if (collapsible) ({ ExpandSpace() }) else null) { p ->
             val v = ScreenLevels.fromSlider(p); levels = levels + (d to v); ScreenLevels.setAsync(ctx, d, v)
@@ -104,7 +106,8 @@ private fun rememberFold(collapsible: Boolean, open: Boolean, close: () -> Unit)
 }
 
 @Composable
-fun VolumeSliders(compact: Boolean = false, collapsible: Boolean = compact, sideExit: Boolean = false) {
+fun VolumeSliders(compact: Boolean = false, collapsible: Boolean = compact, sideExit: Boolean = false, title: String? = null,
+                  dots: Boolean = true) {
     var top by remember { mutableIntStateOf(LinkedVolume.top()) }
     var bottom by remember { mutableIntStateOf(LinkedVolume.bottom()) }
     // Follow the volume buttons (and anything else) the moment they change — plus a slow
@@ -116,20 +119,21 @@ fun VolumeSliders(compact: Boolean = false, collapsible: Boolean = compact, side
     val fold = rememberFold(collapsible, open) { open = false }
     Column(fold.modifier, verticalArrangement = Arrangement.spacedBy(if (compact) 4.dp else 2.dp)) {
         // build 18 (A20, V21): volume in % like brightness, "Muted" at 0 (a bare "0" read as nothing)
-        LevelRow(if (compact) null else Icons.Rounded.VolumeUp, if (compact) "Both" else "Both screens", compact = compact, value = volumeText(top), pos = top / 15f, step = 1f / 15f,
+        LevelRow(if (compact) null else Icons.Rounded.VolumeUp, title ?: if (compact) "Both" else "Both screens", compact = compact, dots = dots, value = volumeText(top), pos = top / 15f, step = 1f / 15f,
             sideExit = sideExit, trailing = if (collapsible) ({ ExpandButton(open, fold.expandFocus) { open = !open } }) else null) { p ->
             val t = Math.round(p * 15); LinkedVolume.setBoth(t); top = t; bottom = (t + LinkedVolume.offset).coerceIn(0, 15)
         }
-        if (open) LevelRow(null, name(true, compact), compact = compact, value = volumeText(top), pos = top / 15f, step = 1f / 15f,
+        if (open) LevelRow(null, name(true, compact), compact = compact, dots = dots, value = volumeText(top), pos = top / 15f, step = 1f / 15f,
             sideExit = sideExit, trailing = if (collapsible) ({ ExpandSpace() }) else null) { p ->
             val t = Math.round(p * 15); LinkedVolume.setTopOnly(t); top = t
         }
-        if (open) LevelRow(null, name(false, compact), compact = compact, value = volumeText(bottom), pos = bottom / 15f, step = 1f / 15f,
+        if (open) LevelRow(null, name(false, compact), compact = compact, dots = dots, value = volumeText(bottom), pos = bottom / 15f, step = 1f / 15f,
             sideExit = sideExit, trailing = if (collapsible) ({ ExpandSpace() }) else null) { p ->
             val b = Math.round(p * 15); LinkedVolume.setBottomOnly(b); bottom = b
         }
         // 1.3 (GitHub #7): say when the bottom screen's apps play quieter / louder than the top's
-        if (!compact && bottom != top) {
+        // (iiSU fork: with the per-screen rows only — folded, the control center's card stays one row)
+        if (!compact && open && bottom != top) {
             val g = LocalGlass.current
             Row(Modifier.fillMaxWidth().padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text("Apps on the bottom screen play ${if (bottom < top) "quieter" else "louder"} (${volumeText(bottom)} against ${volumeText(top)})",
@@ -156,7 +160,7 @@ internal fun volumeText(v: Int, max: Int = 15): String =
  */
 @Composable
 internal fun LevelRow(icon: ImageVector?, label: String, compact: Boolean, value: String?, pos: Float?, step: Float = 0.05f,
-                      sideExit: Boolean = false, trailing: (@Composable () -> Unit)? = null, iconSlot: Boolean = true,
+                      dots: Boolean = !compact, sideExit: Boolean = false, trailing: (@Composable () -> Unit)? = null, iconSlot: Boolean = true,
                       onChange: (Float) -> Unit) {
     val g = LocalGlass.current
     // dev build 16 (WP7): Left / Right stay in the row — the slider at a limit lets them reach its expand button
@@ -164,14 +168,15 @@ internal fun LevelRow(icon: ImageVector?, label: String, compact: Boolean, value
     app.wayfinder.ui.SliderRow(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(if (compact) 6.dp else 10.dp),
         sideExit = sideExit) {
         if (!compact && iconSlot) Box(Modifier.size(22.dp)) { if (icon != null) Icon(icon, null, tint = g.accent, modifier = Modifier.size(22.dp)) }
-        Text(label, color = if (label.startsWith("Both")) g.textPrimary else g.textSecondary,
+        // the row of both screens (the only one with an icon) reads first
+        Text(label, color = if (label.startsWith("Both") || icon != null) g.textPrimary else g.textSecondary,
             style = if (compact) MaterialTheme.typography.bodySmall else MaterialTheme.typography.bodyMedium,
             modifier = Modifier.width(if (compact) 44.dp else 118.dp))
         val h = if (compact) 30.dp else 36.dp
         // build 18 (A6): always a slider — not known yet = empty, no knob, inert, but it takes the page's entry (the page
         // opened on the card after it: Screens on "3-finger tap")
-        // iiSU fork: no step dots in the quick panel's compact rows (Thomas)
-        GlassSlider(pos ?: 0f, Modifier.weight(1f), step = step, height = h, enabled = pos != null, dots = !compact, onChange = onChange)
+        // iiSU fork: no step dots in the control center's rows (Thomas)
+        GlassSlider(pos ?: 0f, Modifier.weight(1f), step = step, height = h, enabled = pos != null, dots = dots, onChange = onChange)
         // build 18 (A20): 40 dp in a compact row — "Muted" and "100 %" fit on one line (34 wrapped them)
         Text(value ?: "…", color = g.textSecondary, style = MaterialTheme.typography.bodySmall.takeIf { compact } ?: MaterialTheme.typography.bodyMedium,
             modifier = Modifier.width(if (compact) 40.dp else 64.dp), textAlign = TextAlign.End, maxLines = 1)

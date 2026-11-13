@@ -3,7 +3,9 @@ package app.wayfinder
 import android.content.Context
 import android.media.AudioManager
 import android.provider.Settings
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.RoundedCornerShape
 import android.view.KeyEvent
 import android.util.Log
 import androidx.activity.setViewTreeOnBackPressedDispatcherOwner
@@ -11,9 +13,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -37,7 +37,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -52,11 +51,13 @@ import app.wayfinder.ui.ButtonKind
 import app.wayfinder.ui.ButtonSize
 import app.wayfinder.ui.GlassButton
 import app.wayfinder.ui.GlassPanel
-import app.wayfinder.ui.GlassScreen
-import app.wayfinder.ui.GlassSegmentedControl
 import app.wayfinder.ui.GlassSlider
 import app.wayfinder.ui.GlassSwitchRow
 import app.wayfinder.ui.LocalGlass
+import app.wayfinder.ui.IisuSectionTitle
+import app.wayfinder.ui.IisuToggleTile
+import app.wayfinder.ui.glassSurface
+import app.wayfinder.ui.menuCard
 import app.wayfinder.ui.requestAfterLayout
 import app.wayfinder.ui.ThorGlassTheme
 import app.wayfinder.ui.Radii
@@ -238,7 +239,12 @@ object QuickPanelWindow {
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-private enum class ScreenMode(val label: String) { BOTH("Both screens on"), TOP("Top screen only"), BOTTOM("Bottom screen only") }
+// iiSU fork: short names for the 36 dp tiles; the full phrase stays their description
+private enum class ScreenMode(val label: String, val description: String, val icon: ImageVector) {
+    BOTH("Both screens", "Both screens on", Icons.Rounded.ViewAgenda),
+    TOP("Top only", "Top screen only", Icons.Rounded.VerticalAlignTop),
+    BOTTOM("Bottom only", "Bottom screen only", Icons.Rounded.VerticalAlignBottom),
+}
 
 @Composable
 private fun PanelContent(close: () -> Unit) {
@@ -252,10 +258,11 @@ private fun PanelBody(first: FocusRequester, close: () -> Unit) {
     // build 18 (E2, pF12): where the header row ends (window px) — Arrange's floating description never covers it
     val headerBottom = remember { intArrayOf(-1) }
     val headerEnd = remember { { headerBottom[0].takeIf { it >= 0 } } }
-    GlassScreen(span = app.wayfinder.ui.AuroraSpan.BOTTOM) { Box(Modifier.fillMaxSize()) {
+    // iiSU fork: iiSU's menu card under the whole panel (no animated glass), sections stacked as in its settings
+    Box(Modifier.fillMaxSize().background(menuCard(LocalGlass.current))) {
         Column(
-            Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 8.dp).verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(10.dp),   // iiSU fork: roomier, fills the bottom screen
+            Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 6.dp).verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             // Edit mode arranges the shortcut tiles in place (like a home screen); B / Done leaves it.
             var editing by remember { mutableStateOf(false) }
@@ -273,7 +280,7 @@ private fun PanelBody(first: FocusRequester, close: () -> Unit) {
             if (editing) app.wayfinder.ui.BackLayer(onBack = { editing = false }) {
                 androidx.compose.runtime.CompositionLocalProvider(LocalHeaderBottom provides headerEnd) {
                     CardsEditor()
-                    ShortcutGridEditor(columns = 4, cellHeight = 80.dp)
+                    ShortcutGridEditor(columns = 4, cellHeight = 64.dp)
                 }
             } else {
                 // round 8: the cards the user picked, in their order (pencil → arrange)
@@ -290,7 +297,13 @@ private fun PanelBody(first: FocusRequester, close: () -> Unit) {
         if (PanelShortcuts.pairsOpen) PanelPairsDialog(close) { PanelShortcuts.pairsOpen = false }
         // build 18 (GitHub #71): the Screenshot tile asks which screen
         if (PanelShortcuts.shotAskOpen) PanelShotSheet(close) { PanelShortcuts.shotAskOpen = false }
-    } }
+    }
+}
+
+/** iiSU fork: a card of the control center — the notification center's card surface, 20 dp corners. */
+@Composable
+private fun Modifier.iisuCard(): Modifier = LocalGlass.current.let { g ->
+    glassSurface(g, RoundedCornerShape(20.dp), well = g.surfaceModal, veil = false)
 }
 
 /**
@@ -339,7 +352,8 @@ private fun NowPlaying() {
     }
     val keep = PanelRules.keepable(PanelShortcuts.touched.toList(), now.first, now.second, now.third,
         QuickPanelWindow.startPerf, QuickPanelWindow.startFan, QuickPanelWindow.startPeak)
-    GlassPanel(Modifier.fillMaxWidth(), radius = Radii.Card) {
+    IisuSectionTitle(Icons.Rounded.SportsEsports, "This app")
+    Box(Modifier.fillMaxWidth().iisuCard()) {
         Row(Modifier.padding(horizontal = 14.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Column(Modifier.weight(1f)) {
@@ -470,7 +484,8 @@ private fun DetailsCard() {
     val battery = listOfNotNull(v?.batteryTemp?.let { "%.0f°".format(it) },
         plug?.takeIf { it.plugged }?.let { it.phrase ?: "charging" }
             ?: hoursLeft?.let { h -> "${h.toInt()} h ${((h % 1) * 60).toInt()} min left" }).joinToString(" · ")
-    GlassPanel(Modifier.fillMaxWidth(), radius = Radii.Card) {
+    IisuSectionTitle(Icons.Rounded.Memory, "Details")
+    Box(Modifier.fillMaxWidth().iisuCard()) {
         ReadoutRows(listOf(
             listOf("CPU" to listOfNotNull(v?.cpuGhz?.let { "%.1f GHz".format(it) }, v?.cpuTemp?.let { "%.0f°".format(it) }).joinToString(" · "),
                 "GPU" to listOfNotNull(v?.gpuMhz?.let { "$it MHz" }, v?.gpuTemp?.let { "%.0f°".format(it) }).joinToString(" · "),
@@ -525,7 +540,8 @@ private fun MediaCard() {
         n?.app?.let { p -> runCatching { ctx.packageManager.getApplicationLabel(ctx.packageManager.getApplicationInfo(p, 0)).toString() }.getOrDefault(p) }
     }
     fun press(code: Int) { MediaNow.key(ctx, code); tick++ }
-    GlassPanel(Modifier.fillMaxWidth(), radius = Radii.Card) {
+    IisuSectionTitle(Icons.Rounded.MusicNote, "Media")
+    Box(Modifier.fillMaxWidth().iisuCard()) {
         Row(Modifier.padding(horizontal = 14.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Column(Modifier.weight(1f)) {
@@ -573,7 +589,7 @@ private fun PanelHeader(close: () -> Unit, editing: Boolean, arrangeFocus: Focus
     val s = v
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(time, color = g.textPrimary, style = MaterialTheme.typography.titleLarge)
-        GlassPanel(Modifier.weight(1f), radius = Radii.Control) {
+        Box(Modifier.weight(1f)) {   // iiSU fork: the readouts straight on the menu card
             // With the default text size (or bigger) and a 12-hour clock the four readouts overflowed —
             // "Battery" wrapped letter by letter or was cut off (1.1). Their real text is measured and
             // shrunk just enough to fit; only below a readable minimum does the last one (RAM) step aside.
@@ -593,7 +609,7 @@ private fun PanelHeader(close: () -> Unit, editing: Boolean, arrangeFocus: Focus
             val density = LocalDensity.current
             val labelStyle = MaterialTheme.typography.labelMedium      // build 18 (E3, pF25): was labelSmall
             val valueStyle = MaterialTheme.typography.labelLarge
-            BoxWithConstraints(Modifier.fillMaxWidth().padding(horizontal = 6.dp, vertical = 4.dp)) {
+            BoxWithConstraints(Modifier.fillMaxWidth().padding(horizontal = 6.dp)) {   // iiSU fork: no vertical room, a 36 dp header
                 val gap = 10f   // breathing room between readouts, dp
                 fun widthOf(label: String, value: String): Float = with(density) {
                     maxOf(measurer.measure(label, labelStyle).size.width, measurer.measure(value.ifEmpty { "—" }, valueStyle).size.width).toDp().value
@@ -616,24 +632,22 @@ private fun PanelHeader(close: () -> Unit, editing: Boolean, arrangeFocus: Focus
                 }
             }
         }
-        FocusableGlass(onClick = toggleEdit, radius = Radii.Control, focusRequester = arrangeFocus) {
-            if (editing) Text("Done", color = g.accent, style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp))
-            // a word, not a bare pencil: nobody knew what it did (2026-09-26)
-            else Row(Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Icon(Icons.Rounded.Edit, null, tint = g.textSecondary, modifier = Modifier.size(20.dp))
-                Text("Arrange", color = g.textSecondary, style = MaterialTheme.typography.labelLarge)
-            }
-        }
+        // iiSU fork: three round buttons, as iiSU's; editing, Arrange is the "Done" pill
+        if (editing) FocusableGlass(onClick = toggleEdit, radius = Radii.Control, focusRequester = arrangeFocus) {
+            Text("Done", color = g.accent, style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp))
+        } else RoundButton(Icons.Rounded.Edit, "Arrange", toggleEdit, arrangeFocus)
         // build 18 (E10, V20): it leaves the panel for Wayfinder — a compass in the text colour (a blue gear read as the panel's
         // own settings, which are Arrange's, and drew the eye)
         // device pass (d3 N2): the Hub's home, as the "Wayfinder" tile — it brought back whatever was open (Game controls)
-        FocusableGlass(onClick = { PanelShortcuts.openWayfinder(ctx); close() }, radius = Radii.Control) {
-            Icon(Icons.Rounded.Explore, "Open Wayfinder", tint = g.textSecondary, modifier = Modifier.padding(8.dp).size(22.dp))
-        }
-        FocusableGlass(onClick = close, radius = Radii.Control) {
-            Icon(Icons.Rounded.Close, "Close", tint = g.textSecondary, modifier = Modifier.padding(8.dp).size(22.dp))
-        }
+        RoundButton(Icons.Rounded.Explore, "Open Wayfinder", { PanelShortcuts.openWayfinder(ctx); close() })
+        RoundButton(Icons.Rounded.Close, "Close", close)
+    }
+}
+
+@Composable
+private fun RoundButton(icon: ImageVector, description: String, onClick: () -> Unit, focus: FocusRequester? = null) {
+    FocusableGlass(onClick = onClick, modifier = Modifier.size(36.dp), radius = 18.dp, focusRequester = focus, contentAlignment = Alignment.Center) {
+        Icon(icon, description, tint = LocalGlass.current.textSecondary, modifier = Modifier.size(20.dp))
     }
 }
 
@@ -659,43 +673,30 @@ private fun ScreenModeCard(first: FocusRequester, close: () -> Unit) {
     androidx.compose.runtime.LaunchedEffect(Unit) {
         while (true) { kotlinx.coroutines.delay(500); mode = ForegroundAppService.screenMode() }
     }
-    GlassSegmentedControl(
-        options = ScreenMode.values().map { it.label },
-        selectedIndex = mode,
-        modifier = Modifier.fillMaxWidth().focusRequesterSafe(first),
-        collapse = false,
-    ) { i ->
-        mode = i
-        PanelShortcuts.touchBottom()   // 1.3 (GitHub #25): "Keep for <game>" can remember it
-        // "Top only" blanks THIS screen: close first, or the panel would sit invisible
-        // under the black cover still holding the controller.
-        if (i == 1) { close(); ForegroundAppService.later(300) { ForegroundAppService.setScreenMode(1) } }
-        else ForegroundAppService.setScreenMode(i)
-    }
+    IisuSectionTitle(Icons.Rounded.ViewAgenda, "Screens")
+    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) { ScreenMode.values().forEachIndexed { i, m ->
+        IisuToggleTile(m.icon, m.label, mode == i, Modifier.weight(1f).then(if (i == 0) Modifier.focusRequester(first) else Modifier),
+            height = 36.dp, description = m.description) {
+            mode = i
+            PanelShortcuts.touchBottom()   // 1.3 (GitHub #25): "Keep for <game>" can remember it
+            // "Top only" blanks THIS screen: close first, or the panel would sit invisible
+            // under the black cover still holding the controller.
+            if (i == 1) { close(); ForegroundAppService.later(300) { ForegroundAppService.setScreenMode(1) } }
+            else ForegroundAppService.setScreenMode(i)
+        }
+    } }
 }
-
-private fun Modifier.focusRequesterSafe(r: FocusRequester) = this.focusRequester(r)
 
 @Composable
 private fun LevelsCard() {
-    // Brightness | Volume side by side, three sliders each (Both / Top / Bottom). Build 18 (E10, V21): one height — one card
-    // opened made them lopsided
-    Row(Modifier.height(IntrinsicSize.Max), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        GlassPanel(Modifier.weight(1f).fillMaxHeight(), radius = Radii.Card) {
-            Column(Modifier.padding(horizontal = 10.dp, vertical = 6.dp)) { PanelLevelTitle(Icons.Rounded.LightMode, "Brightness"); BrightnessSliders(compact = true, sideExit = true) }
-        }
-        GlassPanel(Modifier.weight(1f).fillMaxHeight(), radius = Radii.Card) {
-            Column(Modifier.padding(horizontal = 10.dp, vertical = 6.dp)) { PanelLevelTitle(Icons.Rounded.VolumeUp, "Volume"); VolumeSliders(compact = true, sideExit = true) }
-        }
-    }
-}
-
-@Composable
-private fun PanelLevelTitle(icon: ImageVector, title: String) {
+    // iiSU fork: two setting rows (Brightness, Volume) whose chevron opens Top / Bottom under them. Straight on the menu card,
+    // as iiSU draws a slider: its white thumb and near-white track vanish on a white card
     val g = LocalGlass.current
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 2.dp)) {
-        Icon(icon, null, tint = g.accent, modifier = Modifier.size(18.dp))
-        Text(title, color = g.textPrimary, style = MaterialTheme.typography.labelLarge)
+    IisuSectionTitle(Icons.Rounded.Tune, "Levels")
+    Column(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 4.dp)) {
+        BrightnessSliders(collapsible = true, title = "Brightness", dots = false)
+        Box(Modifier.fillMaxWidth().height(1.dp).background(g.textTertiary.copy(alpha = 0.35f)))
+        VolumeSliders(collapsible = true, title = "Volume", dots = false)
     }
 }
 
@@ -710,44 +711,20 @@ private fun TilesGrid(close: () -> Unit) {
     val refresh: (Long) -> Unit = { ms -> ForegroundAppService.later(ms) { tick++ } }
     val all = PanelShortcuts.tiles(ctx, close, after, refresh)
     val chosen = PanelShortcuts.chosen(ctx).filter { PanelShortcuts.allowed(it) }.mapNotNull { all[it] }
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    IisuSectionTitle(Icons.Rounded.Apps, "Shortcuts")
+    // iiSU fork: iiSU's toggle tiles — an app keeps its own icon, a value goes under the name, a disabled one is faded
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         chosen.chunked(4).forEach { row ->
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                row.forEach { t -> TileView(t, Modifier.weight(1f)) }
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                row.forEach { t ->
+                    IisuToggleTile(t.icon, t.label, t.on, Modifier.weight(1f), height = 64.dp,
+                        description = listOfNotNull(t.label, t.value).joinToString(": "), value = t.value, disabled = t.disabled,
+                        iconContent = { tint -> TileIcon(t.icon, t.pkg, tint, 22.dp) }) { t.action() }
+                }
                 repeat(4 - row.size) { Box(Modifier.weight(1f)) }
             }
         }
         if (chosen.isEmpty()) Text("No shortcuts — press Arrange above to add some.", color = LocalGlass.current.textTertiary, style = MaterialTheme.typography.bodySmall)
-    }
-}
-
-@Composable
-private fun TileView(t: PanelTile, modifier: Modifier) {
-    val g = LocalGlass.current
-    // build 18 (E10, V05): an "on" tile is washed with the accent under its glass (its value was the only accent: blue words
-    // barely read on the glass)
-    // iiSU fork: 64 → 80 dp high; "on" is the accent icon, not a tinted tile
-    FocusableGlass(onClick = t.action, modifier = modifier.height(80.dp), radius = Radii.Row) {
-        Column(Modifier.fillMaxSize().alpha(if (t.disabled) 0.5f else 1f).padding(horizontal = 4.dp, vertical = 4.dp),
-            verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
-            TileIcon(t.icon, t.pkg, if (t.on) g.accent else g.textSecondary, 24.dp)
-            // QA2: a label too wide for the tile (large font: "Keyboard &…") shrinks to fit instead of being cut. Build 18 (E2,
-            // pF11): the catalog's names are longer ("Close background apps") — a tile without a value line wraps them on two
-            // lines first; one with a value keeps one line (the 64 dp tile has no room for three)
-            androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                val m = androidx.compose.ui.text.rememberTextMeasurer()
-                val base = MaterialTheme.typography.labelMedium
-                val w = m.measure(t.label, base).size.width.toFloat()
-                val room = with(androidx.compose.ui.platform.LocalDensity.current) { maxWidth.toPx() }
-                val lines = if (t.value == null && w > room) 2 else 1
-                val scale = if (w > room * lines && w > 0f) (room * lines / w).coerceAtLeast(0.7f) else 1f
-                Text(t.label, color = g.textPrimary, style = base.copy(fontSize = base.fontSize * scale, letterSpacing = base.letterSpacing * scale),
-                    maxLines = lines, softWrap = lines > 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, textAlign = TextAlign.Center)
-            }
-            // the value in the secondary text colour, semi-bold when on (the icon keeps the accent)
-            if (t.value != null) Text(t.value, color = g.textSecondary, style = MaterialTheme.typography.labelSmall, maxLines = 1,
-                fontWeight = if (t.on) androidx.compose.ui.text.font.FontWeight.SemiBold else null)
-        }
     }
 }
 
