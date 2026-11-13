@@ -27,6 +27,7 @@ object RecentsTool {
             "list" -> return try { list(java.io.File(args[1])) } catch (t: Throwable) { fail(chain(t)) }
             "shot" -> return try { shot(args[1].toInt(), java.io.File(args[2])) } catch (t: Throwable) { fail(chain(t)) }
             "open" -> return try { open(args[1].toInt(), args[2].toInt()) } catch (t: Throwable) { fail(chain(t)) }
+            "cancel" -> return try { cancelGesture() } catch (t: Throwable) { fail(chain(t)) }
         }
         val keep = (args.getOrNull(0) ?: "")
             .split(",").map { it.trim() }.filter { it.isNotEmpty() }.toHashSet()
@@ -145,6 +146,20 @@ object RecentsTool {
         // ActivityManager.START_* : below 0 is a failure (no such task, …)
         if (res < 0) return fail("startActivityFromRecents($taskId) = $res")
         println("OK $res"); halt(0)
+    }
+
+    /**
+     * `cancel`: ends the recents animation a swipe up started, as Android's own ways out of Recents do before going home. Left
+     * running (its app closed under it), Recents' picture stays over the home that came to the front. None running: nothing.
+     */
+    private fun cancelGesture() {
+        val binder = Class.forName("android.os.ServiceManager").getMethod("getService", String::class.java)
+            .invoke(null, "activity_task") as? IBinder ?: return fail("activity_task unavailable")
+        val atm = Class.forName("android.app.IActivityTaskManager\$Stub").getMethod("asInterface", IBinder::class.java).invoke(null, binder)!!
+        val cancel = atm.javaClass.methods.firstOrNull { it.name == "cancelRecentsAnimation" && it.parameterTypes.size == 1 }
+            ?: return fail("cancelRecentsAnimation not found; " + sig(atm, "Recents"))
+        cancel.invoke(atm, false)   // false: the tasks stay in the order they are in now
+        println("OK"); halt(0)
     }
 
     /** `shot <taskId> <dir>`: the task's full picture (the reduced one if that is all there is) as [dir]/shot.jpg. */

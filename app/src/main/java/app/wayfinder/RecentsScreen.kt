@@ -81,6 +81,8 @@ import app.wayfinder.ui.glassSurface
  */
 object RecentsScreen {
     private const val FADE_MS = 150L
+    /** Leaving for an app or the home: it is in the window list (Recents "gone") a moment before it is drawn. */
+    private const val SETTLE_MS = 250L
     private val main = android.os.Handler(android.os.Looper.getMainLooper())
     private var view: android.view.View? = null
     private var wm: WindowManager? = null
@@ -106,7 +108,7 @@ object RecentsScreen {
     fun show(service: AccessibilityService, display: Int, origin: String?, always: Set<String>, otherScreenApps: () -> Collection<String>): Boolean {
         view?.let { v ->
             if (shownOn == display) {
-                if (closing) { closing = false; v.animate().cancel(); v.animate().alpha(1f).setDuration(FADE_MS).start() }
+                if (closing) { closing = false; v.animate().cancel(); v.animate().alpha(1f).setStartDelay(0).setDuration(FADE_MS).start() }
                 return true
             }
             remove()   // one at a time: Recents opened on the other screen
@@ -169,7 +171,9 @@ object RecentsScreen {
         val v = view ?: return
         if (closing) return
         closing = true
-        v.animate().alpha(0f).setDuration(FADE_MS).withEndAction { if (view === v && closing) remove() }.start()
+        // shortcut: a fixed wait for the destination's first frame (Recents showed through the fade), measured on the Thor
+        v.animate().alpha(0f).setStartDelay(if (leaving) SETTLE_MS else 0).setDuration(FADE_MS)
+            .withEndAction { if (view === v && closing) remove() }.start()
     }
 
     private fun remove() {
@@ -195,8 +199,20 @@ object RecentsScreen {
     /** A tap beside the cards, or Back: the app left, else this screen's home (where Android's Back on Recents goes). */
     fun leave() {
         if (back()) return
+        val s = service ?: return
         val here = shownOn ?: return
-        leaveVia { PServiceBridge.goHomeOnDisplay(here) }
+        leaveVia { goHome(s, here) }
+    }
+
+    /**
+     * [display]'s home, off the main thread. A swipe up leaves Android's recents animation running under the cover: with its app
+     * closed meanwhile, Recents' picture stayed over the home that came to the front, and the cover waited for a Recents that
+     * never went (then showed it, stale). Ended first, as Android's own ways out of Recents do. No opening animation: the cover
+     * goes as soon as the home is in front, and Recents showed through it while the home was still sliding in.
+     */
+    private fun goHome(s: Context, display: Int) {
+        PServiceBridge.runEntryPoint(s, "RecentsTool", "cancel")
+        PServiceBridge.goHomeOnDisplay(display, animate = false)
     }
 
     /** Opens the app left (the card Recents was opened from); false: none in the list. */
@@ -223,7 +239,7 @@ object RecentsScreen {
         leaveVia {
             val ok = RecentsSource.open(s, t)
             // an app on the other screen comes forward there; this screen leaves Recents for the app it had (or its home)
-            if (ok && t.display != here) { if (left == null || !RecentsSource.open(s, left)) PServiceBridge.goHomeOnDisplay(here) }
+            if (ok && t.display != here) { if (left == null || !RecentsSource.open(s, left)) goHome(s, here) }
             // failed (gone, no root): Android's Recents underneath takes over
             if (!ok) main.post { android.util.Log.w("ThorRecents", "open ${t.pkg}: failed"); close() }
         }
@@ -231,14 +247,16 @@ object RecentsScreen {
 
     fun closeSelected() {
         val t = selected() ?: return
+        val s = service ?: return
         val here = shownOn ?: return
         val i = cards.indexOf(t)
         removed = removed + t.taskId
         val rest = cards
         selectedId = rest.getOrNull(i.coerceAtMost(rest.lastIndex))?.taskId ?: -1
         RecentsSource.forget(t.taskId)
-        bg { PServiceBridge.exec("am stack remove ${t.taskId}") }
-        if (rest.isEmpty()) leaveVia { PServiceBridge.goHomeOnDisplay(here) }   // the last card: its home
+        val remove = { PServiceBridge.exec("am stack remove ${t.taskId}") }
+        if (rest.isEmpty()) leaveVia { remove(); goHome(s, here) }   // the last card: its home, once it is gone
+        else bg { remove() }
     }
 
     /** The controller's first Select of "close all": the button says the second one closes them, for [ms]. */
@@ -252,7 +270,7 @@ object RecentsScreen {
         val here = shownOn ?: return
         val keep = RecentsModel.clearKeep(AppSettings.recentsLocked, otherScreenApps(), always).joinToString(",")
         leaveVia {
-            PServiceBridge.runEntryPoint(s, "RecentsTool", keep); PServiceBridge.goHomeOnDisplay(here)
+            PServiceBridge.runEntryPoint(s, "RecentsTool", keep); goHome(s, here)
             main.post { RecentsSource.refreshAsync(s) }   // the next open starts from what is left
         }
     }

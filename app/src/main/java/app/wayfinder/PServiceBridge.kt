@@ -172,10 +172,10 @@ object PServiceBridge {
         return out != null
     }
 
-    /** Bring the launcher/home to the top of [displayId] as root via pservice. */
-    fun goHomeOnDisplay(displayId: Int): Boolean {
+    /** Bring the launcher/home to the top of [displayId] as root via pservice. [animate] false: at once (FLAG_ACTIVITY_NO_ANIMATION). */
+    fun goHomeOnDisplay(displayId: Int, animate: Boolean = true): Boolean {
         val out = exec(
-            "am start --display $displayId " +
+            "am start --display $displayId " + (if (animate) "" else "-f 0x10000 ") +
                 "-a android.intent.action.MAIN -c android.intent.category.HOME"
         )
         Log.d(TAG, "home on display $displayId via pservice: ${out?.trim()}")
