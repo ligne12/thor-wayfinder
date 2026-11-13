@@ -34,6 +34,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
@@ -690,12 +691,16 @@ private fun LevelsCard() {
     // iiSU fork: two setting rows (Brightness, Volume) whose chevron opens Top / Bottom under them. Straight on the menu card,
     // as iiSU draws a slider: its white thumb and near-white track vanish on a white card
     val g = LocalGlass.current
-    IisuSectionTitle(Icons.Rounded.Tune, "Levels")
-    Column(Modifier.fillMaxWidth().padding(horizontal = 14.dp)) {
-        BrightnessSliders(collapsible = true, title = "Brightness", dots = false)
-        // each row centred in its space: 6 dp on both sides, as the panel's spacing above and below (Thomas: the thumbs touched it)
-        Box(Modifier.padding(vertical = 6.dp).fillMaxWidth().height(1.dp).background(g.textTertiary.copy(alpha = 0.35f)))
-        VolumeSliders(collapsible = true, title = "Volume", dots = false)
+    // Thomas: each row centred on its thumb, its tallest part — the titles' own room above and below their text counted, the
+    // four gaps are equal (measured on the Thor): 3.5 dp under "Levels", 8 dp each side of the line, and the panel's 6 dp
+    // spacing to "Shortcuts" less 1.5 dp (this block reports itself that much shorter). The panel's height is unchanged
+    Column(Modifier.layout { m, c -> val p = m.measure(c); layout(p.width, p.height - 1.5.dp.roundToPx()) { p.place(0, 0) } }) {
+        IisuSectionTitle(Icons.Rounded.Tune, "Levels")
+        Column(Modifier.fillMaxWidth().padding(start = 14.dp, top = 3.5.dp, end = 14.dp)) {
+            BrightnessSliders(collapsible = true, title = "Brightness", dots = false)
+            Box(Modifier.padding(vertical = 8.dp).fillMaxWidth().height(1.dp).background(g.textTertiary.copy(alpha = 0.35f)))
+            VolumeSliders(collapsible = true, title = "Volume", dots = false)
+        }
     }
 }
 
