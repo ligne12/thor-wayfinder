@@ -27,6 +27,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -217,7 +218,7 @@ private fun WheelLegend(steering: Boolean, modifier: Modifier) {
 
 /** dev build 16 (WP7): a row holding a slider — Left / Right never leave it (a slider at its limit lets the key go to its
  *  own row's other controls, never to another card). */
-internal val LocalSliderRow = compositionLocalOf { false }
+internal val LocalSliderRow = compositionLocalOf<androidx.compose.runtime.MutableState<Boolean>?> { null }   // its slider has the focus
 
 /** Build 18 (A6): [sideExit] = Left / Right may leave the row at its ends (the quick panel's level cards side by side: Right
  *  from the Brightness card's last control goes on to the Volume card); false keeps them in the row, as before. */
@@ -233,8 +234,21 @@ fun Modifier.sliderRow(sideExit: Boolean = false): Modifier = (if (sideExit) thi
 fun SliderRow(modifier: Modifier = Modifier, horizontalArrangement: Arrangement.Horizontal = Arrangement.Start,
               verticalAlignment: Alignment.Vertical = Alignment.Top, sideExit: Boolean = false,
               content: @Composable RowScope.() -> Unit) {
-    CompositionLocalProvider(LocalSliderRow provides true) {
-        Row(modifier.sliderRow(sideExit), horizontalArrangement = horizontalArrangement, verticalAlignment = verticalAlignment, content = content)
+    val g = LocalGlass.current
+    val focused = remember { mutableStateOf(false) }
+    val shown by androidx.compose.animation.core.animateFloatAsState(if (focused.value) 1f else 0f,
+        androidx.compose.animation.core.spring(stiffness = 400f), label = "row")
+    CompositionLocalProvider(LocalSliderRow provides focused) {
+        // iiSU fork: its slider's focus tints the whole row, 8 dp past its ends, under its content — iiSU's settings row
+        Row(modifier.sliderRow(sideExit).drawWithContent {
+            if (shown > 0.01f) {
+                val o = 8.dp.toPx()
+                drawRoundRect(focusTint(g.dark), androidx.compose.ui.geometry.Offset(-o, 0f),
+                    androidx.compose.ui.geometry.Size(size.width + 2 * o, size.height),
+                    androidx.compose.ui.geometry.CornerRadius(Radii.Control.toPx()), alpha = shown)
+            }
+            drawContent()
+        }, horizontalArrangement = horizontalArrangement, verticalAlignment = verticalAlignment, content = content)
     }
 }
 
@@ -255,15 +269,16 @@ fun GlassSlider(value: Float, modifier: Modifier = Modifier, step: Float = 0.05f
     val now by androidx.compose.runtime.rememberUpdatedState(value)
     // dev build 16 (WP7): in a SliderRow, at a limit the key goes on (to the row's other controls); elsewhere kept as before.
     // A page whose first content is a slider opens on it (OfferEntry)
-    val inRow = LocalSliderRow.current
+    val row = LocalSliderRow.current
+    val inRow = row != null
     val req = remember { FocusRequester() }
     OfferEntry(req)
     Box(
         modifier.fillMaxWidth().height(height)
             .focusRequester(req)
             // dev build 17 (WP8): the one focus look, inside its edge (was a 2 dp white border)
-            .focusIndicator(CapsuleShape, inset = true)
-            .onFocusChanged { FocusTruth.report(req, it.hasFocus); focused = it.isFocused }   // device pass (P1-3): requestAfterLayout
+            .focusIndicator(CapsuleShape, inset = true, tint = row == null)   // in a SliderRow, the row shows it
+            .onFocusChanged { FocusTruth.report(req, it.hasFocus); focused = it.isFocused; row?.value = it.isFocused }   // device pass (P1-3): requestAfterLayout
             .onKeyEvent { e ->
                 if (e.type != KeyEventType.KeyDown) return@onKeyEvent false
                 // not known yet (A6): nothing to change — the key goes on, as at a limit

@@ -92,8 +92,6 @@ data class GlassColors(
     val optionWell: Color,         // an unselected option's opaque base under its glass
     // build 18 (A23)
     val positive: Color,           // what went right ("All set", "working ✓"): a green that reads on the card
-    // iiSU fork: the focus ring's gradient (iiSU's selection colours); empty: accent2, accent, focusRing
-    val ringStops: List<Color> = emptyList(),
 )
 
 // dev build 17 (WP8): the derived tokens — they only follow light / dark ("Your own colours" sets [GlassColors.dark] from its

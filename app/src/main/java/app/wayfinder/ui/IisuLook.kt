@@ -96,14 +96,13 @@ data class IisuLook(
         val base = glassColorsFor(dark, false, colours(dark))
         val veil = Color.Black.copy(alpha = 0.13f)
         val fill = Brush.verticalGradient(listOf(veil, veil))
-        val (from, mid, to) = selection()
         // text measured against the box as drawn (the veil over the background), not the card colour the builder knew
         val box = TokenArgb.mix(TokenArgb.of(base.base.toArgbInt()), 0xFF000000, veil.alpha.toDouble())
         val text = TokenArgb.of(base.textPrimary.toArgbInt())
         // ink on the accent fills as drawn — the fixed gradient's stops (the accent itself only tints icons and words)
         val fills = listOf(SKY, ACCENT, ACCENT2).map { TokenArgb.of(it) }
         val ink = listOf(0xFF0A0C14, 0xFFFFFFFF).maxBy { c -> fills.minOf { TokenArgb.contrast(c, it) } }
-        return base.copy(panelFill = fill, panelFillFocused = fill, panel = veil, ringStops = listOf(Color(to), Color(mid), Color(from)),
+        return base.copy(panelFill = fill, panelFillFocused = fill, panel = veil,
             textSecondary = base.textPrimary.copy(alpha = TokenArgb.minAlpha(text, box, 4.5, 0.82).toFloat()),
             textTertiary = base.textPrimary.copy(alpha = TokenArgb.minAlpha(text, box, 3.0, 0.58).toFloat()),
             onAccent = Color(ink.toInt()))

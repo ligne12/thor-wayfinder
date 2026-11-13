@@ -1603,7 +1603,8 @@ private fun androidx.compose.foundation.layout.RowScope.KeyCap(label: String, co
     if (code == null) { Spacer(Modifier.weight(w)); return }
     val i = keys.indexOf(code)
     // dev build 17 (WP8): a chosen key = the selected fill; its order number is its mark (no check)
-    FocusableGlass(onClick = { onClick(code) }, radius = Radii.KeyCap, modifier = Modifier.weight(w).fillMaxHeight(), focusRequester = focus) {
+    FocusableGlass(onClick = { onClick(code) }, radius = Radii.KeyCap, modifier = Modifier.weight(w).fillMaxHeight(), focusRequester = focus,
+        selected = i >= 0) {
         Box(Modifier.fillMaxSize().then(if (i >= 0) Modifier.selectedFill(g, RoundedCornerShape(Radii.KeyCap)) else Modifier),
             contentAlignment = Alignment.Center) {
             Text(label, color = if (i >= 0) g.onAccent else g.textPrimary, fontSize = if (label in ARROWS) 18.sp else if (label.length > 4) 10.sp else 12.sp,

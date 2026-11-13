@@ -431,7 +431,7 @@ private fun PickRow(title: String, line: String, now: Trigger?, selected: Boolea
     val g = LocalGlass.current
     val shape = RoundedCornerShape(Radii.Row)
     FocusableGlass(onClick = onClick, modifier = Modifier.fillMaxWidth(), radius = Radii.Row, focusRequester = req,
-        role = app.wayfinder.ui.FocusRole.PICK) {
+        role = app.wayfinder.ui.FocusRole.PICK, selected = selected) {
         Row(Modifier.fillMaxWidth().then(if (selected) Modifier.selectedFill(g, shape) else Modifier)
             .padding(horizontal = 14.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)) {

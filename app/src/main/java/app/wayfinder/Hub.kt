@@ -1920,7 +1920,8 @@ private fun PresetCard(label: String, icon: ImageVector, subtitle: String, selec
                        focus: FocusRequester?, onClick: () -> Unit) {
     val g = LocalGlass.current
     val shape = RoundedCornerShape(Radii.Action)
-    FocusableGlass(onClick = onClick, modifier = modifier, radius = Radii.Action, focusRequester = focus, role = FocusRole.OPTION) {
+    FocusableGlass(onClick = onClick, modifier = modifier, radius = Radii.Action, focusRequester = focus, role = FocusRole.OPTION,
+        selected = selected) {
         Box(Modifier.fillMaxWidth().then(if (selected) Modifier.selectedFill(g, shape) else Modifier)) {
             Row(Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 16.dp), verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(14.dp)) {

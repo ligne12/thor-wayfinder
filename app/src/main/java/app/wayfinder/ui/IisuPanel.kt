@@ -89,7 +89,7 @@ fun IisuToggleTile(icon: ImageVector, label: String, on: Boolean, modifier: Modi
     val fade = Modifier.alpha(if (disabled) 0.5f else 1f).padding(horizontal = 4.dp)
     Box(modifier.height(height)
         .focusRequester(req)
-        .focusIndicator(tile)
+        .focusIndicator(tile, onFill = on)
         .onFocusChanged {
             FocusTruth.report(req, it.hasFocus)
             if (it.isFocused) mem?.last = req else gate.armed = false

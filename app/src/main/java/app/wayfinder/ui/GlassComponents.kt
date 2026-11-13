@@ -216,9 +216,6 @@ private fun iisuDotPaint(density: Float, dark: Boolean): android.graphics.Paint 
     }
 }
 
-/** iiSU fork: one turn of the focus ring's gradient ([focusIndicator]). */
-private const val RING_TURN_MS = 5840
-
 /**
  * The shared glass surface: translucent top-lit frost + specular rim (bright at
  * the top-left, fading through clear, faint at the bottom-right).
@@ -303,13 +300,10 @@ internal class ReleaseGate {
 }
 
 /**
- * dev build 17 (WP8): THE focus look — a blurred accent halo just outside [shape], a ring (build 18, A1: 2 dp in g.focusRing,
- * 2 dp outside the edge — it reads on a selected option's accent fill too) and a spring scale (build 18, A11: 1.035, at most
- * 12 dp wider — a full-width row grew 30 dp into the gutter), while this element (or something inside it) has the focus.
- * [inset] = an element inside a card or a clipping
- * parent (an inner switch row, a slider, a text field): no scale, the halo drawn just inside the edge so the parent's clip
- * can't cut it. Put it BEFORE the element's own surface (it scales it and draws its rim over it) and before `.focusable()`
- * (it observes that target). The numbers are FocusableGlass's of build 16.
+ * dev build 17 (WP8): THE focus look. iiSU fork (part 6): iiSU's settings focus — [focusTint] over the element, inside
+ * [shape], while it (or something inside it) has the focus; no halo, ring or scale. [inset]: an element inside a card or a
+ * clipping parent (an inner switch row, a slider, a text field). [tint] false: something around it draws the tint (a
+ * slider's [SliderRow]). Put it before the element's own surface and before `.focusable()` (it observes that target).
  * Device pass (P2-4): and the element it marks comes into view with [FOCUS_VIEW_MARGIN] above and below as the focus
  * arrives (A11) — every control with the focus look (a card, an option, a slider, a text field, the colour wheel), not only
  * [FocusableGlass]: a slider or a code field focused below the fold stayed there, with only `focusable()`'s own bring
@@ -317,7 +311,7 @@ internal class ReleaseGate {
  * brings it once it has a size (FocusableGlass skipped it).
  */
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
-fun Modifier.focusIndicator(shape: Shape, inset: Boolean = false): Modifier = composed {
+fun Modifier.focusIndicator(shape: Shape, inset: Boolean = false, tint: Boolean = true, onFill: Boolean = false): Modifier = composed {
     val g = LocalGlass.current
     var on by remember { mutableStateOf(false) }
     val bring = remember { androidx.compose.foundation.relocation.BringIntoViewRequester() }
@@ -326,20 +320,8 @@ fun Modifier.focusIndicator(shape: Shape, inset: Boolean = false): Modifier = co
     val pending = remember { booleanArrayOf(false) }
     val scope = androidx.compose.runtime.rememberCoroutineScope()
     val halo by animateFloatAsState(if (on) 1f else 0f, spring(stiffness = 400f), label = "h")
-    // how far it has grown (0 → 1, the spring's bounce kept); the scale it reaches depends on its width (graphicsLayer)
-    val grow by animateFloatAsState(if (on && !inset) 1f else 0f, spring(dampingRatio = 0.55f), label = "s")
-    // one Paint per element (it was allocated every frame), only its colour changes
     val density = androidx.compose.ui.platform.LocalDensity.current
-    val maxGrowPx = with(density) { FOCUS_GROW_MAX.toPx() }
     val marginPx = with(density) { FOCUS_VIEW_MARGIN.toPx() }
-    // iiSU fork: iiSU's ring turns — its gradient goes round the element clockwise, one turn in 6 s, while it has the focus
-    // (measured on iiSU's home: a quarter turn in 1.46 s). Read in the draw phase only: it redraws the ring, nothing else.
-    // only while its window has the focus: a Hub left on the other screen during play must not redraw every frame
-    val windowFocused = androidx.compose.ui.platform.LocalWindowInfo.current.isWindowFocused
-    val turn = if (on && windowFocused && IisuLookSource.current.ringTurns != false) androidx.compose.animation.core.rememberInfiniteTransition(label = "ring")
-        .animateFloat(0f, 1f, androidx.compose.animation.core.infiniteRepeatable(
-            androidx.compose.animation.core.tween(RING_TURN_MS, easing = androidx.compose.animation.core.LinearEasing)), label = "turn")
-    else null
     // b18r3 (P2-4, r1 BUG-1): the page's view of its focus ([FocusInView]: its header snap never undoes this bring) and where
     // this element is drawn (the bring's own coordinates)
     val page = LocalFocusInView.current
@@ -373,38 +355,23 @@ fun Modifier.focusIndicator(shape: Shape, inset: Boolean = false): Modifier = co
             }
             else if (!it.hasFocus) { pending[0] = false; page?.leave(box) }
         }
-        // build 18 (A11): 1 + min(0.035, 12 dp / width) — a pill keeps its 3.5 %, a wide row grows ~6 dp a side
-        .then(if (inset) Modifier else Modifier.graphicsLayer {
-            val w = size.width
-            val s = 1f + grow * (if (w > 0f) minOf(FOCUS_SCALE - 1f, maxGrowPx / w) else FOCUS_SCALE - 1f)
-            scaleX = s; scaleY = s
-        })
-        // iiSU fork: iiSU's focus — no glow around the element: its edge becomes a band about 6 dp wide, inside the shape, in
-        // the turning gradient, lighter toward its outer edge and full colour at its inner edge (a tube), with a near-white
-        // line outside (measured on iiSU's home: 14 px from #A3A9E5 to #5C6BD3 inside #F2F4FB). It grows about 3 %, as iiSU's.
-        .drawWithContent {
+        // iiSU fork: iiSU's settings focus — the element darkens a little (lightens on dark), no halo, no ring, no growth
+        // (Thomas, part 6). [tint] false: its row draws it (a slider in a SliderRow)
+        .then(if (!tint) Modifier else Modifier.drawWithContent {
             drawContent()
-            if (halo <= 0.01f) return@drawWithContent
-            val band = (if (inset) 3.dp else 6.dp).toPx()
-            val o = shape.createOutline(size, layoutDirection, this)
-            val a = (Math.PI / 4 + 2 * Math.PI * (turn?.value ?: 0f)).toFloat()   // 0: violet top-left, focus colour bottom-right
-            val r = maxOf(size.width, size.height) / 2f
-            val d = androidx.compose.ui.geometry.Offset(kotlin.math.cos(a) * r, kotlin.math.sin(a) * r)
-            val c = androidx.compose.ui.geometry.Offset(size.width / 2f, size.height / 2f)
-            clipPath(androidx.compose.ui.graphics.Path().apply { addOutline(o) }) {
-                // strokes are centred on the edge: inside the clip only their inner half shows
-                drawOutline(o, Brush.linearGradient(g.ringStops.ifEmpty { listOf(g.accent2, g.accent, g.focusRing) }, c - d, c + d), alpha = halo, style = Stroke(band * 2))
-                // the tube's shading: white layered from the outer edge, about +35 % there and nothing at the inner edge
-                for ((k, w) in listOf(0.33f to 0.16f, 0.66f to 0.11f, 1f to 0.08f))
-                    drawOutline(o, Color.White.copy(alpha = w), alpha = halo, style = Stroke(band * 2 * k))
-                drawOutline(o, Color.White.copy(alpha = 0.85f), alpha = halo, style = Stroke(1.5.dp.toPx()))
-            }
-        }
+            if (halo > 0.01f) drawOutline(shape.createOutline(size, layoutDirection, this), focusTint(g.dark, onFill), alpha = halo)
+        })
 }
 
-/** The focused element's scale (a pill's, a small control's) and, build 18 (A11), the most it may grow in width. */
-private const val FOCUS_SCALE = 1.035f
-private val FOCUS_GROW_MAX = 12.dp
+/** iiSU fork: the focus's tint over an element — iiSU's focused settings row, measured on the Thor (IisuPanelTest). [onFill]:
+ *  over the selection gradient (an "on" tile, a chosen option) it darkens it plainly, in both themes: the row's tint moved it
+ *  9 levels, unseen. */
+internal fun focusTint(dark: Boolean, onFill: Boolean = false): Color = when {
+    onFill -> Color.Black.copy(alpha = 0.18f)
+    dark -> Color.White.copy(alpha = 0.072f)
+    else -> Color.Black.copy(alpha = 0.073f)
+}
+
 /** Build 18 (A11): a focused element brought into view keeps this much room above and below it (it stopped flush on the
  *  screen's edge: More's last row). As much as the page's padding allows. Device pass (P2-4, B): internal — a card's own
  *  request (Hub.kt `SettingCard`) holds its focused control's, margin included, so the two nest instead of cancelling. */
@@ -508,6 +475,8 @@ fun FocusableGlass(
     contentAlignment: Alignment = Alignment.TopStart,
     well: Color = Color.Unspecified,
     role: FocusRole? = null,
+    /** iiSU fork: drawn on the selection gradient (a chosen option): its focus darkens it plainly ([focusTint]). */
+    selected: Boolean = false,
     content: @Composable (focused: Boolean) -> Unit,
 ) {
     val g = LocalGlass.current
@@ -538,7 +507,7 @@ fun FocusableGlass(
     Box(
         modifier
             .focusRequester(req)
-            .focusIndicator(shape)
+            .focusIndicator(shape, onFill = selected)
             .glassSurface(g, shape, raised = focused, well = well)
             .onFocusChanged {
                 focused = it.isFocused
@@ -848,8 +817,8 @@ fun StatusPill(text: String, ok: Boolean, modifier: Modifier = Modifier) {
 
 /**
  * dev build 17 (WP8): one option — the segmented control's cell, also used alone where options aren't one row: a multi-pick
- * grid (Game controls' "Several at once"), a list of actions with a line each. Selected = fill + check; focus = the halo
- * and the ring. Replaces RemapScreen's Pill(selected) / Choice, LightsPage's
+ * grid (Game controls' "Several at once"), a list of actions with a line each. Selected = fill + check; focus = the tint
+ * ([focusTint]: plainly darker on the fill). Replaces RemapScreen's Pill(selected) / Choice, LightsPage's
  * ModeChip, ActionPicker's and PanelShortcutsPage's selected rows. Give it a width (weight / width / fillMaxWidth).
  * Build 18 (A10): the check is always a corner badge (14 dp; 12 when [tight]) — it takes no text width, so a word never
  * moves when it gets selected (the inline "✓ Usual" is gone); the same look in a folded choice's open list. [role]: the
@@ -866,7 +835,7 @@ fun GlassOption(text: String, selected: Boolean, onClick: () -> Unit, modifier: 
     // build 18 (A3): unselected, an opaque well under its glass — the app or the aurora behind can't tint it "half selected"
     FocusableGlass(onClick = onClick, modifier = modifier.focusProperties { canFocus = focusable }, radius = Radii.Control,
         focusRequester = focusRequester, focusId = focusId, contentAlignment = Alignment.Center,
-        role = role) {   // iiSU fork: an option is the same glass as the rest
+        role = role, selected = selected) {   // iiSU fork: an option is the same glass as the rest
         val start = align == Alignment.Start
         Box(Modifier.fillMaxWidth().then(if (selected) Modifier.selectedFill(g, shape) else Modifier),
             contentAlignment = if (start) Alignment.CenterStart else Alignment.Center) {
