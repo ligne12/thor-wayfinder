@@ -46,6 +46,22 @@ class TileOptionRulesTest {
         assertEquals(1f, TileOptionRules.fractionOf(1000, 2596, 4082), 0f)
     }
 
+    // `cmd wifi` outputs: status / list-networks as the Thor prints them, list-scan-results in AOSP's format (names anonymized)
+    private fun wifi(name: String) = javaClass.getResource("/wifi/$name.txt")!!.readText()
+
+    @Test fun currentSsid_readsTheConnectedNetwork() = assertEquals("Home 5G", TileOptionRules.currentSsid(wifi("status")))
+
+    @Test fun currentSsid_nullWhenNotConnected() {
+        assertEquals(null, TileOptionRules.currentSsid("Wifi is disabled\n"))
+        assertEquals(null, TileOptionRules.currentSsid("Wifi is enabled\nWifi is not connected\n"))
+    }
+
+    @Test fun savedInRange_savedAndScanned_strongestFirst_once() =
+        assertEquals(listOf("Home 5G", "Office", "Cafe"), TileOptionRules.savedInRange(wifi("networks"), wifi("scan")))
+
+    @Test fun savedInRange_noScanResults() =
+        assertEquals(emptyList<String>(), TileOptionRules.savedInRange(wifi("networks"), "No scan results\n"))
+
     @Test fun lightMode_toOff_keepsTheRest() {
         val cur = LightProfile(mode = LightMode.STATIC, left = 5, right = 6)
         assertEquals(cur.copy(mode = LightMode.OFF), TileOptionRules.nextLightProfile(cur, null, LightMode.OFF))

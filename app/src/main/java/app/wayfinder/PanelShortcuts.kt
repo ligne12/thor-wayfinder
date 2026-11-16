@@ -340,8 +340,10 @@ object PanelShortcuts {
             "pairs" to tile("pairs", if (Layouts.pairs.isEmpty()) "None yet" else "${Layouts.pairs.size} saved", false) {
                 pairsOpen = true },
             // ── Android
-            "wifi" to switch("wifi", wifiOn) { "cmd wifi set-wifi-enabled ${if (it) "enabled" else "disabled"}" },
-            "bt" to switch("bt", glob("bluetooth_on", 0) == 1) { "cmd bluetooth_manager ${if (it) "enable" else "disable"}" },
+            "wifi" to switch("wifi", wifiOn, options = TileOptions.Custom { WifiOptions(it) { a -> openSettings(a) } }) {
+                "cmd wifi set-wifi-enabled ${if (it) "enabled" else "disabled"}" },
+            "bt" to switch("bt", glob("bluetooth_on", 0) == 1, options = TileOptions.Custom { BluetoothOptions(it) { a -> openSettings(a) } }) {
+                "cmd bluetooth_manager ${if (it) "enable" else "disable"}" },
             "airplane" to switch("airplane", glob("airplane_mode_on", 0) == 1) { "cmd connectivity airplane-mode ${if (it) "enable" else "disable"}" },
             "dnd" to glob("zen_mode", 0).let { zen -> switch("dnd", zen != 0,
                 options = choices(listOf("Off", "Priority only", "Alarms only", "Total silence"), TileOptionRules.zenChoice(zen)) {

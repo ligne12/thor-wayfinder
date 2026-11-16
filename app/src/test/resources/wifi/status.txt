@@ -1,0 +1,7 @@
+Wifi is enabled
+Wifi scanning is only available when wifi is enabled
+==== Primary ClientModeManager instance ====
+Wifi is connected to "Home 5G"
+WifiInfo: SSID: "Home 5G", BSSID: 02:00:00:00:00:01, MAC: 02:00:00:00:00:aa, IP: /192.168.0.10, Security type: 2, Supplicant state: COMPLETED, Wi-Fi standard: 6, RSSI: -48, Link speed: 1152Mbps, Frequency: 5500MHz, Net ID: 0, Metered hint: false, score: 60, isUsable: true, Trusted: true, Ephemeral: false, FQDN: <none>, Provider friendly name: <none>, Requesting package name: <none>"Home 5G"wpa2-pskMLO Information: , AP MLD Address: <none>, AP MLO Link Id: <none>, AP MLO Affiliated links: <none>
+successfulTxPackets: 25770
+successfulRxPackets: 20520

@@ -22,6 +22,29 @@ object TileOptionRules {
     fun fractionOf(kelvin: Int, min: Int, max: Int): Float =
         if (max <= min) 0f else ((max - kelvin).toFloat() / (max - min)).coerceIn(0f, 1f)
 
+    /** `cmd wifi status`: the network it is connected to, null when it isn't. */
+    fun currentSsid(status: String): String? = Regex("Wifi is connected to \"(.*)\"").find(status)?.groupValues?.get(1)
+
+    /** The saved networks (`cmd wifi list-networks`) seen by the last scan (`cmd wifi list-scan-results`), strongest first,
+     *  each once (a network saves one entry per security type and a router shows one BSSID per band). */
+    fun savedInRange(networks: String, scan: String): List<String> {
+        val ws = Regex("\\s+")
+        // "<id>  <ssid…>  <security>": the SSID is what lies between (it may hold spaces)
+        val saved = networks.lines().filter { it.isNotBlank() && !it.startsWith("Network Id") }
+            .mapNotNull { l -> l.trim().split(ws).takeIf { it.size >= 3 }?.let { it.subList(1, it.size - 1).joinToString(" ") } }.toSet()
+        // "<bssid> <frequency> <rssi> <age> <ssid…> [flags]"
+        val seen = HashMap<String, Int>()
+        for (l in scan.lines()) {
+            val t = l.trim().split(ws, limit = 5)
+            if (t.size < 5 || ':' !in t[0]) continue
+            val rssi = t[2].toIntOrNull() ?: continue
+            val ssid = Regex("^(.*?)\\s*(\\[.*])?$").find(t[4])?.groupValues?.get(1)?.trim()?.split(ws)?.joinToString(" ")
+            if (ssid.isNullOrEmpty()) continue   // a hidden network
+            seen[ssid] = maxOf(seen[ssid] ?: Int.MIN_VALUE, rssi)
+        }
+        return seen.entries.filter { it.key in saved }.sortedByDescending { it.value }.map { it.key }
+    }
+
     /** The stick lights in effect [mode]: from Off, the profile saved when they went off (else the default); colours,
      *  speed and brightness kept. */
     fun nextLightProfile(cur: LightProfile, saved: LightProfile?, mode: LightMode): LightProfile =
