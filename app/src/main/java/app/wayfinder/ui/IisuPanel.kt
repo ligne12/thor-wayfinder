@@ -21,6 +21,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -32,16 +33,22 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.onLongClick
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 /**
  * iiSU fork: the bricks of iiSU's panels — its settings' look — shared by the volume bar, the notification center and
@@ -68,23 +75,30 @@ internal fun tileLayout(heightDp: Float, hasValue: Boolean): TileLayout = when {
  * Below 48 dp the icon and the name sit side by side. One explicit focus target, as [FocusableGlass]: it holds the focus in
  * touch mode too, reports it ([FocusTruth]) and is the window's last focused control ([LocalFocusMemory]) — a closed popup
  * gives the focus back to the tile that opened it.
+ * iiSU fork: [onLongClick] — a finger held (Android's long-press delay) or A held [ReleaseGate.LONG_MS] runs it instead of
+ * [onClick]; null, the tile acts on any release as before. No [icon] and no [iconContent]: the name alone.
  */
 @Composable
-fun IisuToggleTile(icon: ImageVector, label: String, on: Boolean, modifier: Modifier = Modifier, height: Dp = 72.dp,
+fun IisuToggleTile(icon: ImageVector?, label: String, on: Boolean, modifier: Modifier = Modifier, height: Dp = 72.dp,
                    description: String = label, value: String? = null, disabled: Boolean = false,
                    iconContent: (@Composable (tint: Color) -> Unit)? = null, focusRequester: FocusRequester? = null,
-                   onClick: () -> Unit) {
+                   onLongClick: (() -> Unit)? = null, onClick: () -> Unit) {
     val g = LocalGlass.current
     val tile = RoundedCornerShape(16.dp)
     val gate = remember { ReleaseGate() }
     val click by rememberUpdatedState(onClick)   // the tap handler is installed once
+    val long by rememberUpdatedState(onLongClick)
+    // A held: a timer from the press (not the key's repeats — whatever the controller sends for a held A)
+    val scope = rememberCoroutineScope()
+    val hold = remember { arrayOfNulls<Job>(1) }
     val own = remember { FocusRequester() }
     val req = focusRequester ?: own
     val reqNow by rememberUpdatedState(req)
     val mem = LocalFocusMemory.current
     val ink = if (on) g.onAccent else g.textPrimary
+    val hasGlyph = icon != null || iconContent != null
     val glyph: @Composable (Dp) -> Unit = { size ->
-        if (iconContent != null) iconContent(ink) else Icon(icon, null, tint = ink, modifier = Modifier.size(size))
+        if (iconContent != null) iconContent(ink) else if (icon != null) Icon(icon, null, tint = ink, modifier = Modifier.size(size))
     }
     val fade = Modifier.alpha(if (disabled) 0.5f else 1f).padding(horizontal = 4.dp)
     Box(modifier.height(height)
@@ -92,20 +106,34 @@ fun IisuToggleTile(icon: ImageVector, label: String, on: Boolean, modifier: Modi
         .focusIndicator(tile, onFill = on)
         .onFocusChanged {
             FocusTruth.report(req, it.hasFocus)
-            if (it.isFocused) mem?.last = req else gate.armed = false
+            if (it.isFocused) mem?.last = req else { gate.armed = false; hold[0]?.cancel() }
         }
-        .onKeyEvent { gate.onKey(it) { click() } }
+        .onKeyEvent { e ->
+            if (long != null && ReleaseGate.isSelect(e)) {
+                if (e.type == KeyEventType.KeyDown && e.nativeKeyEvent.repeatCount == 0) {
+                    hold[0]?.cancel()
+                    hold[0] = scope.launch { delay(ReleaseGate.LONG_MS); gate.held { long?.invoke() } }
+                } else if (e.type == KeyEventType.KeyUp) hold[0]?.cancel()
+            }
+            gate.onKey(e) { click() }
+        }
         .then(if (on) Modifier.clip(tile).background(Brush.linearGradient(g.accentStops), tile)
               else Modifier.glassSurface(g, tile, well = g.surfaceModal))
         // not `clickable`: its focus is refused in touch mode (the quick panel opened with nothing focused)
         .focusable()
-        .pointerInput(Unit) { detectTapGestures { mem?.last = reqNow; click() } }
-        .semantics { contentDescription = description; onClick { click(); true } },
+        .pointerInput(onLongClick != null) {
+            detectTapGestures(onLongPress = if (onLongClick != null) { _ -> mem?.last = reqNow; long?.invoke() } else null) {
+                mem?.last = reqNow; click()
+            }
+        }
+        .semantics {
+            contentDescription = description; onClick { click(); true }
+            if (onLongClick != null) this.onLongClick(label = null) { long?.invoke(); true }   // `this.`: not the parameter
+        },
         contentAlignment = Alignment.Center) {
         when (tileLayout(height.value, value != null)) {
             TileLayout.INLINE -> Row(fade, verticalAlignment = Alignment.CenterVertically) {
-                glyph(18.dp)
-                Spacer(Modifier.width(6.dp))
+                if (hasGlyph) { glyph(18.dp); Spacer(Modifier.width(6.dp)) }
                 Text(label, color = ink, style = MaterialTheme.typography.labelLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             TileLayout.NAME_VALUE -> Column(fade, horizontalAlignment = Alignment.CenterHorizontally) {

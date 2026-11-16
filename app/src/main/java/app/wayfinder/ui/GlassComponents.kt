@@ -167,7 +167,11 @@ internal class ReleaseGate {
      *  focus while A is held (the AYN button's quick panel, a screen switch) sends a cancelled A up, which fired the control
      *  behind the panel. Disarmed either way (still taken: no fallback key). */
     fun release(canceled: Boolean, act: () -> Unit) { val go = armed && !canceled; armed = false; if (go) act() }
+    /** iiSU fork: the press was held [LONG_MS] — [long] runs instead, and the release that follows does nothing. */
+    fun held(long: () -> Unit) { if (armed) { armed = false; long() } }
     companion object {
+        /** iiSU fork: A held this long on a panel tile opens its options. */
+        const val LONG_MS = 500L
         fun isSelect(e: androidx.compose.ui.input.key.KeyEvent) =
             e.key == Key.ButtonA || e.key == Key.DirectionCenter || e.key == Key.Enter || e.key == Key.NumPadEnter
     }
