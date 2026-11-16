@@ -58,12 +58,12 @@ import app.wayfinder.ui.menuCard
  * and this one shows instead, on the controller's screen, at the right edge where Android's was: the ringer mode, the
  * volume track (tap or drag it), the speaker and the level, and "…" which widens it into a sound side panel (ringer mode
  * and the volume of both screens, top, bottom). It is drawn as iiSU's menus are: a solid card, its 20 dp corners, its
- * slider colour. It goes 1.5 s after the last press or touch (5 s when widened). Touch only, as Android's: a touch beside
- * it goes to the game, and the controller stays with the game.
+ * slider colour. It goes 1.5 s after the last press or touch (4 s when widened), and at once on a touch outside it (the
+ * touch still goes to the game). Touch only, as Android's: the controller stays with the game.
  */
 object VolumeBar {
     private const val HIDE_MS = 1500L
-    private const val HIDE_WIDE_MS = 5000L
+    private const val HIDE_WIDE_MS = 4000L
     private val main = android.os.Handler(android.os.Looper.getMainLooper())
     private var view: android.view.View? = null
     private var wm: android.view.WindowManager? = null
@@ -162,7 +162,11 @@ object VolumeBar {
         LinkedVolume.init(ctx)   // the wide form's per-screen sliders
         val owner = app.wayfinder.keyboard.ComposeOwner()
         val root = object : android.widget.FrameLayout(ctx) {
-            override fun dispatchTouchEvent(ev: android.view.MotionEvent): Boolean { bump(); return super.dispatchTouchEvent(ev) }
+            override fun dispatchTouchEvent(ev: android.view.MotionEvent): Boolean {
+                // a touch beside the bar (FLAG_WATCH_OUTSIDE_TOUCH, this screen only): it fades out, the game keeps the touch
+                if (ev.actionMasked == android.view.MotionEvent.ACTION_OUTSIDE) { fadeOut(); return false }
+                bump(); return super.dispatchTouchEvent(ev)
+            }
         }
         owner.attach(root)
         root.addView(androidx.compose.ui.platform.ComposeView(ctx).apply {
@@ -189,6 +193,7 @@ object VolumeBar {
             android.view.WindowManager.LayoutParams.WRAP_CONTENT, android.view.WindowManager.LayoutParams.WRAP_CONTENT,
             android.view.WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
             android.view.WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or android.view.WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
+                android.view.WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH or
                 android.view.WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or android.view.WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED,
             android.graphics.PixelFormat.TRANSLUCENT,
         ).apply {
