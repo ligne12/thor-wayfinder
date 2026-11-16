@@ -26,7 +26,11 @@ Switch iiSU to dark and Wayfinder follows, live.
   Arrange / Wayfinder / Close header.
 - **Notification center** (new): Android's shade is replaced by a sheet that slides down from the top of the top
   screen — Android's switches as one row of tiles, notifications as cards in two columns.
-- **Volume bar** (new): Wayfinder's own bar over the game instead of Android's, with held-key repeat and Silent.
+- **Volume bar** (new): Wayfinder's own bar over the game instead of Android's, with held-key repeat and Silent; a touch
+  outside closes it.
+- **Hold a tile** (new; control center, notification center — a finger held, or A held): its options, as on iOS — Wi-Fi
+  networks, Bluetooth devices, Do not disturb, Night light, Extra dim, the speaker, the stick lights — or a value picked
+  directly (performance, fan, controller lock, frame rate, boost, face buttons, L2 / R2). A short press does what it did.
 - **Multitask** (new): a carousel over Android's Recents, driven with the controller — the screen each app is on,
   lock, screenshot, Clear all, memory in use — that closes without a flash of Android's layout.
 - **The whole app in iiSU's settings look**: the Hub, its pages and sheets, the keyboard and the deck, the cues and
