@@ -232,6 +232,8 @@ object PanelShortcuts {
         ButtonNames.init(ctx)                                   // the PlayStation part of the Thor's style (thor_face_ps)
         val trig = sys("trigger_input_mode", 2)
         val lightsOff = LightSettings.global.mode == LightMode.OFF
+        // iiSU fork: "Speaker sound fix" and "Speaker EQ" open the same window
+        val speakerOptions = TileOptions.Custom { SpeakerOptions() }
         return mapOf(
             // ── Wayfinder
             // with ClusterTune / Pulse: the tile names it and changes nothing (AYN's Medium / High would pin the CPU at
@@ -316,12 +318,12 @@ object PanelShortcuts {
                 options = choices(listOf("Off", "+6 dB", "+12 dB"), listOf(0, 6, 12).indexOf(SpeakerTune.boost)) {
                     SpeakerTune.setVolumeBoost(listOf(0, 6, 12)[it]); refresh(0) }) {
                 SpeakerTune.setVolumeBoost(when (SpeakerTune.boost) { 0 -> 6; 6 -> 12; else -> 0 }); refresh(0) },
-            "speaker" to tile("speaker", onOff(SpeakerTune.enabled), SpeakerTune.enabled) {
+            "speaker" to tile("speaker", onOff(SpeakerTune.enabled), SpeakerTune.enabled, options = speakerOptions) {
                 SpeakerTune.setOn(!SpeakerTune.enabled); refresh(0) },
             // build 18 (E3 addendum, V06): with the fix off it's dimmed and says so (it turned the fix on: another tile's job)
             "speakereq" to tile("speakereq",
                 if (!SpeakerTune.enabled) "Fix is off" else if (SpeakerTune.eqOn) "On" else "Off", SpeakerTune.enabled && SpeakerTune.eqOn,
-                disabled = !SpeakerTune.enabled) {
+                disabled = !SpeakerTune.enabled, options = speakerOptions) {
                 if (!SpeakerTune.enabled) Overlays.pill("Turn on the speaker sound fix first", Overlays.panelOrigin())
                 else { SpeakerTune.setEq(!SpeakerTune.eqOn); refresh(0) } },
             "lights" to tile("lights", null, false) { open(HubPage.LIGHTS) },
@@ -361,8 +363,10 @@ object PanelShortcuts {
                 }.apply { isDaemon = true }.start()
                 refresh(500); refresh(1500)
             },
-            "night" to switch("night", sec("night_display_activated", 0) == 1) { "settings put secure night_display_activated ${if (it) 1 else 0}" },
-            "dim" to switch("dim", sec("reduce_bright_colors_activated", 0) == 1) { "settings put secure reduce_bright_colors_activated ${if (it) 1 else 0}" },
+            "night" to switch("night", sec("night_display_activated", 0) == 1, options = TileOptions.Custom { NightLightOptions(it) }) {
+                "settings put secure night_display_activated ${if (it) 1 else 0}" },
+            "dim" to switch("dim", sec("reduce_bright_colors_activated", 0) == 1, options = TileOptions.Custom { ExtraDimOptions(it) }) {
+                "settings put secure reduce_bright_colors_activated ${if (it) 1 else 0}" },
             "invert" to switch("invert", sec("accessibility_display_inversion_enabled", 0) == 1) { "settings put secure accessibility_display_inversion_enabled ${if (it) 1 else 0}" },
             "record" to tile("record", if (ScreenRecorder.recording) "Recording" else null, ScreenRecorder.recording) {
                 if (ScreenRecorder.recording) { ScreenRecorder.stop(); refresh(0) } else after(400) { ScreenRecorder.start() } },

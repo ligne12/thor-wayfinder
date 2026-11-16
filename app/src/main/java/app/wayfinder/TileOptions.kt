@@ -34,8 +34,8 @@ sealed class TileOptions {
     /** One of [choices]: a pick runs [onPick] (its index), then the window closes. [footer]: a link or a switch under them. */
     class Choices(val choices: List<Choice>, val onPick: (Int) -> Unit,
                   val footer: (@Composable () -> Unit)? = null) : TileOptions()
-    /** Its own content (sliders, networks…); the window stays open. */
-    class Custom(val content: @Composable () -> Unit) : TileOptions()
+    /** Its own content (sliders, networks…), given its tile (its on / off switch is the tile's own action); the window stays open. */
+    class Custom(val content: @Composable (PanelTile) -> Unit) : TileOptions()
 }
 
 class Choice(val label: String, val selected: Boolean)
@@ -88,7 +88,7 @@ fun TileOptionsSheet(t: PanelTile, onClose: () -> Unit) {
                     }
                     options.footer?.invoke()
                 }
-                is TileOptions.Custom -> options.content()
+                is TileOptions.Custom -> options.content(t)
             }
         }
     }

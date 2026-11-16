@@ -31,6 +31,21 @@ class TileOptionRulesTest {
         assertEquals(cur.copy(mode = LightMode.STROBE), TileOptionRules.nextLightProfile(cur, null, LightMode.STROBE))
     }
 
+    // Night light: right (1f) is warmer, so fewer kelvins
+    @Test fun nightLight_rightIsWarmer() {
+        assertEquals(4082, TileOptionRules.kelvinAt(0f, 2596, 4082))
+        assertEquals(2596, TileOptionRules.kelvinAt(1f, 2596, 4082))
+        assertEquals(3339, TileOptionRules.kelvinAt(0.5f, 2596, 4082))
+    }
+
+    @Test fun nightLight_roundTrips() =
+        assertEquals(0.25f, TileOptionRules.fractionOf(TileOptionRules.kelvinAt(0.25f, 2596, 4082), 2596, 4082), 0.01f)
+
+    @Test fun nightLight_clampsOutOfRange() {
+        assertEquals(0f, TileOptionRules.fractionOf(9000, 2596, 4082), 0f)
+        assertEquals(1f, TileOptionRules.fractionOf(1000, 2596, 4082), 0f)
+    }
+
     @Test fun lightMode_toOff_keepsTheRest() {
         val cur = LightProfile(mode = LightMode.STATIC, left = 5, right = 6)
         assertEquals(cur.copy(mode = LightMode.OFF), TileOptionRules.nextLightProfile(cur, null, LightMode.OFF))
