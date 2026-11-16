@@ -93,7 +93,7 @@ object QuickPanelWindow {
     private var shownAt = 0L
 
     /** Lifecycle + saved state for Compose, and a Back dispatcher for the panel's BackLayers (dev build 16: ui/BackLayer.kt). */
-    private class PanelOwner : androidx.activity.OnBackPressedDispatcherOwner {
+    internal class PanelOwner : androidx.activity.OnBackPressedDispatcherOwner {   // iiSU fork: the notification center's too
         val base = app.wayfinder.keyboard.ComposeOwner()
         override val lifecycle get() = base.lifecycle
         override val onBackPressedDispatcher = androidx.activity.OnBackPressedDispatcher()
@@ -701,22 +701,26 @@ private fun TilesGrid(close: () -> Unit) {
     val after: (Long, () -> Unit) -> Unit = { ms, block -> close(); ForegroundAppService.later(ms, block) }
     val refresh: (Long) -> Unit = { ms -> ForegroundAppService.later(ms) { tick++ } }
     val all = PanelShortcuts.tiles(ctx, close, after, refresh)
-    val chosen = PanelShortcuts.chosen(ctx).filter { PanelShortcuts.allowed(it) }.mapNotNull { all[it] }
+    val chosen = PanelShortcuts.chosen(ctx).filter { PanelShortcuts.allowed(it) }.mapNotNull { id -> all[id]?.let { id to it } }
+    // iiSU fork: the tile whose options window is open (a long press); it dies with the panel's window
+    var optionsFor by remember { mutableStateOf<String?>(null) }
     IisuSectionTitle(Icons.Rounded.Apps, "Shortcuts")
     // iiSU fork: iiSU's toggle tiles — an app keeps its own icon, a value goes under the name, a disabled one is faded
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         chosen.chunked(4).forEach { row ->
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                row.forEach { t ->
+                row.forEach { (id, t) ->
                     IisuToggleTile(t.icon, t.label, t.on, Modifier.weight(1f), height = 64.dp,
                         description = listOfNotNull(t.label, t.value).joinToString(": "), value = t.value, disabled = t.disabled,
-                        iconContent = { tint -> TileIcon(t.icon, t.pkg, tint, 22.dp) }) { t.action() }
+                        iconContent = { tint -> TileIcon(t.icon, t.pkg, tint, 22.dp) },
+                        onLongClick = tileLongPress(t) { optionsFor = id }) { t.action() }
                 }
                 repeat(4 - row.size) { Box(Modifier.weight(1f)) }
             }
         }
         if (chosen.isEmpty()) Text("No shortcuts — press Arrange above to add some.", color = LocalGlass.current.textTertiary, style = MaterialTheme.typography.bodySmall)
     }
+    optionsFor?.let { all[it] }?.takeIf { it.options != null }?.let { TileOptionsSheet(it) { optionsFor = null } }
 }
 
 /** Global (not per-app) versions of AYN's quick settings, written the way AYN applies them. */

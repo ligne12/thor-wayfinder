@@ -195,8 +195,10 @@ object PanelShortcuts {
         fun onOff(on: Boolean) = if (on) "On" else "Off"
         /** Build 18 (E2, V03): a tile, named as in the catalog (Arrange, the description card) — never a label of its own.
          *  [disabled] (E3, pF16): dimmed; a press says why instead of acting. */
-        fun tile(id: String, value: String?, on: Boolean, disabled: Boolean = false, action: () -> Unit) =
-            PanelTile(ic(id), CATALOG.getValue(id).name, value, on, disabled = disabled, action = action)
+        fun tile(id: String, value: String?, on: Boolean, disabled: Boolean = false, options: TileOptions? = null,
+                 sayOnLong: Boolean = false, action: () -> Unit) =
+            PanelTile(ic(id), CATALOG.getValue(id).name, value, on, disabled = disabled, options = options,
+                sayOnLong = sayOnLong, action = action)
         /** Build 18 (GitHub #83; review: H8 / E1 — nothing that closes apps or turns Wayfinder off on one press): the first
          *  press asks ("Press again", 3 s), the second closes the panel and runs [act] [delay] ms later. */
         fun twoPress(id: String, delay: Long, act: () -> Unit) = (asking == id).let { asked ->
@@ -223,7 +225,8 @@ object PanelShortcuts {
             // ── Wayfinder
             // with ClusterTune / Pulse: the tile names it and changes nothing (AYN's Medium / High would pin the CPU at
             // the tuner's limits) — compatibility first
-            "perf" to Tuners.installed(ctx).let { t -> tile("perf", t ?: PerfMode.ofAyn(perf)?.label ?: "—", perf > 0 && t == null) {
+            "perf" to Tuners.installed(ctx).let { t -> tile("perf", t ?: PerfMode.ofAyn(perf)?.label ?: "—", perf > 0 && t == null,
+                sayOnLong = t != null) {
                 if (t != null) Overlays.pill("$t manages the CPU — Wayfinder leaves performance to it", Overlays.panelOrigin())
                 else {
                     // AYN may also move the fan (Standard → Quiet): refresh again once it has.
@@ -354,9 +357,12 @@ object PanelShortcuts {
     }
 }
 
-/** Build 18 (E3, pF16): [disabled] — it can't act now (Battery saver while charging…): drawn dimmed, its [action] says why. */
+/** Build 18 (E3, pF16): [disabled] — it can't act now (Battery saver while charging…): drawn dimmed, its [action] says why.
+ *  iiSU fork: [options] — what a long press opens (null: a long press does nothing); [sayOnLong] — its action only says why
+ *  it can't act (Performance with a tuner): a long press says it too. */
 class PanelTile(val icon: ImageVector, val label: String, val value: String?, val on: Boolean, val pkg: String? = null,
-                val disabled: Boolean = false, val action: () -> Unit)
+                val disabled: Boolean = false, val options: TileOptions? = null, val sayOnLong: Boolean = false,
+                val action: () -> Unit)
 
 /** Build 18 (E3): the quick panel's pure rules (JVM tests: PanelRulesTest). */
 internal object PanelRules {
