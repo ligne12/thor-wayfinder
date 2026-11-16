@@ -24,6 +24,7 @@ import app.wayfinder.ui.IisuToggleTile
 import app.wayfinder.ui.LocalGlass
 import app.wayfinder.ui.ModalHeader
 import app.wayfinder.ui.Radii
+import app.wayfinder.ui.menuCard
 
 /**
  * iiSU fork: a panel tile's options — what a long press on it opens, as iOS's control center does (Wi-Fi networks, a value
@@ -62,14 +63,15 @@ fun OptionLink(text: String, onClick: () -> Unit) {
     }
 }
 
-/** [t]'s options window: "App pairs"' sheet, capped for the wide top screen. B, a tap outside or Close shut it. */
+/** [t]'s options window: "App pairs"' sheet, capped for the wide top screen. B, a tap outside or a pick shut it. */
 @Composable
 fun TileOptionsSheet(t: PanelTile, onClose: () -> Unit) {
     val options = t.options ?: return
     val first = remember { FocusRequester() }
-    // the cap first: after fillMaxWidth its exact width can't be narrowed (it spread over the whole top screen)
+    // the cap first: after fillMaxWidth its exact width can't be narrowed (it spread over the whole top screen).
+    // The sound panel's card (iiSU's light grey): on the white one a slider's white track and thumb vanished
     GlassSheet(onDismiss = onClose, modifier = Modifier.widthIn(max = 560.dp).fillMaxWidth(0.92f),
-        first = if (options is TileOptions.Choices) first else null, contentPadding = 0.dp) {
+        first = if (options is TileOptions.Choices) first else null, contentPadding = 0.dp, well = menuCard(LocalGlass.current)) {
         Column(Modifier.padding(18.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             // Thomas: no Close button — B, a tap outside or a pick close it
             ModalHeader(t.label, onClose, closeVisible = false)

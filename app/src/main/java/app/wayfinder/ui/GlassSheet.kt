@@ -71,14 +71,15 @@ fun GlassSheet(
     modifier: Modifier = Modifier.fillMaxWidth(0.7f),
     first: FocusRequester? = null,
     contentPadding: Dp = 22.dp,
+    well: Color = Color.Unspecified,   // iiSU fork: the card's colour (unspecified: the theme's, as before)
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val host = LocalSheetHost.current
     val dismiss by rememberUpdatedState(onDismiss)
-    if (host == null) { SheetFrame({ dismiss() }, modifier, first, contentPadding, null, content); return }
+    if (host == null) { SheetFrame({ dismiss() }, modifier, first, contentPadding, well, null, content); return }
     val locals = currentCompositionLocalContext
     val entry = remember { SheetEntry() }
-    entry.content = { CompositionLocalProvider(locals) { SheetFrame({ dismiss() }, modifier, first, contentPadding, host, content) } }
+    entry.content = { CompositionLocalProvider(locals) { SheetFrame({ dismiss() }, modifier, first, contentPadding, well, host, content) } }
     DisposableEffect(host) {
         host.sheets += entry
         onDispose { host.sheets -= entry }
@@ -86,7 +87,7 @@ fun GlassSheet(
 }
 
 @Composable
-private fun SheetFrame(onDismiss: () -> Unit, modifier: Modifier, first: FocusRequester?, contentPadding: Dp, host: SheetHost?,
+private fun SheetFrame(onDismiss: () -> Unit, modifier: Modifier, first: FocusRequester?, contentPadding: Dp, well: Color, host: SheetHost?,
                        content: @Composable ColumnScope.() -> Unit) {
     val g = LocalGlass.current
     // the control that opened it (focused, or tapped) gets the focus back when it closes
@@ -108,7 +109,7 @@ private fun SheetFrame(onDismiss: () -> Unit, modifier: Modifier, first: FocusRe
                         .pointerInput(Unit) { detectTapGestures { } }               // a tap on the card isn't "outside"
                         .focusProperties { exit = { FocusRequester.Cancel } }.focusGroup()   // the page behind is out of reach
                         // dev build 17 (WP8): one popup surface (was the base at .97 under raised frost)
-                        .modalSurface(g, shape)
+                        .modalSurface(g, shape, well)
                         .padding(contentPadding),
                         verticalArrangement = Arrangement.spacedBy(10.dp)) { content() }
                 }
@@ -119,4 +120,4 @@ private fun SheetFrame(onDismiss: () -> Unit, modifier: Modifier, first: FocusRe
 
 /** dev build 17 (WP8): a popup's or sheet's card (GlassSheet, Game controls' and Combos' popups, the tile picker), opaque.
  *  Their dim: [modalDim]. iiSU fork (part 6): the same solid card as everywhere ([glassSurface]). */
-fun Modifier.modalSurface(g: GlassColors, shape: Shape): Modifier = glassSurface(g, shape)
+fun Modifier.modalSurface(g: GlassColors, shape: Shape, well: Color = Color.Unspecified): Modifier = glassSurface(g, shape, well)
