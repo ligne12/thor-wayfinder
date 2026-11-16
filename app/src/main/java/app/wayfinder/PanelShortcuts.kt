@@ -206,8 +206,19 @@ object PanelShortcuts {
                 if (asking == id) { asking = null; after(delay, act) }
                 else { asking = id; val mine = ++askGen; ForegroundAppService.later(3000) { if (askGen == mine) asking = null } } } }
         /** A root switch tile: shows On/Off, writes [cmd] (on/off), re-reads. */
-        fun switch(id: String, on: Boolean, cmd: (Boolean) -> String) =
-            tile(id, onOff(on), on) { QuickSettings.exec(cmd(!on)); refresh(500); refresh(1500) }
+        fun switch(id: String, on: Boolean, options: TileOptions? = null, cmd: (Boolean) -> String) =
+            tile(id, onOff(on), on, options = options) { QuickSettings.exec(cmd(!on)); refresh(500); refresh(1500) }
+        /** iiSU fork: a long press's choices — [labels], [selected] the current one; a pick runs [pick]. */
+        fun choices(labels: List<String>, selected: Int, footer: (@androidx.compose.runtime.Composable () -> Unit)? = null,
+                    pick: (Int) -> Unit) =
+            TileOptions.Choices(labels.mapIndexed { i, l -> Choice(l, i == selected) }, pick, footer)
+        // build 18 (E3, pF15): the counter never shows over Wayfinder — turned on here, say where it shows (once a panel)
+        fun tellFps() {
+            if (!fpsTold && (MainActivity.hubOn(android.view.Display.DEFAULT_DISPLAY) ||
+                    QuickPanelWindow.displayId == android.view.Display.DEFAULT_DISPLAY)) {
+                fpsTold = true; Overlays.pill("The counter shows over games", Overlays.panelOrigin())
+            }
+        }
 
         val perf = sys("performance_mode", 0)
         val fan = sys("fan_mode", 4)
@@ -226,13 +237,18 @@ object PanelShortcuts {
             // with ClusterTune / Pulse: the tile names it and changes nothing (AYN's Medium / High would pin the CPU at
             // the tuner's limits) — compatibility first
             "perf" to Tuners.installed(ctx).let { t -> tile("perf", t ?: PerfMode.ofAyn(perf)?.label ?: "—", perf > 0 && t == null,
-                sayOnLong = t != null) {
+                sayOnLong = t != null,
+                options = if (t != null) null else choices(PerfMode.ayn.map { it.label }, PerfMode.ayn.indexOfFirst { it.value == perf }) {
+                    touch("perf"); QuickSettings.setPerformance(PerfMode.ayn[it].value); refresh(350); refresh(2000) }) {
                 if (t != null) Overlays.pill("$t manages the CPU — Wayfinder leaves performance to it", Overlays.panelOrigin())
                 else {
                     // AYN may also move the fan (Standard → Quiet): refresh again once it has.
                     touch("perf"); QuickSettings.cyclePerformance(ctx); refresh(350); refresh(2000)
                 } } },
-            "fan" to tile("fan", FanMode.values().firstOrNull { it.value == fan }?.label ?: "Custom", fan != 4) {
+            "fan" to tile("fan", FanMode.values().firstOrNull { it.value == fan }?.label ?: "Custom", fan != 4,
+                options = choices(QuickSettings.FAN_CHOICES.map { it.label }, QuickSettings.FAN_CHOICES.indexOfFirst { it.value == fan },
+                    footer = { OptionLink("Fan curve…") { after(300) { QuickSettings.openFanCurve(ctx) } } }) {
+                    touch("fan"); QuickSettings.setFan(QuickSettings.FAN_CHOICES[it].value); refresh(350) }) {
                 touch("fan"); QuickSettings.cycleFan(ctx); refresh(350) },
             "fancurve" to tile("fancurve", null, false) { after(300) { QuickSettings.openFanCurve(ctx) } },
             "gyro" to (GyroEngine.configuredForCurrent != null).let { set ->
@@ -246,7 +262,13 @@ object PanelShortcuts {
             "hz" to tile("hz", "${hz.toInt()} Hz", hz > 90f) { touch("hz"); QuickSettings.toggleRefresh(ctx); refresh(350) },
             // 1.3: Off → Frame rate → + battery → Everything (the extra stats were hard to find). Build 18 (E3, pF15): the
             // Screens card's words ("FPS" / "+ temps" were cryptic)
-            "fps" to tile("fps", PanelRules.fpsValue(AppSettings.fpsCounter, AppSettings.fpsLevel), AppSettings.fpsCounter) {
+            "fps" to tile("fps", PanelRules.fpsValue(AppSettings.fpsCounter, AppSettings.fpsLevel), AppSettings.fpsCounter,
+                options = choices(listOf("Off") + PanelRules.FPS_LEVELS, if (AppSettings.fpsCounter) AppSettings.fpsLevel + 1 else 0) {
+                    val turnsOn = !AppSettings.fpsCounter && it > 0
+                    if (it == 0) { AppSettings.setFpsCounterOn(false); AppSettings.setFpsLevelTo(0) }
+                    else { AppSettings.setFpsLevelTo(it - 1); AppSettings.setFpsCounterOn(true) }
+                    ForegroundAppService.reapplyFps(); refresh(0)
+                    if (turnsOn) tellFps() }) {
                 val turnsOn = !AppSettings.fpsCounter
                 when {
                     !AppSettings.fpsCounter -> { AppSettings.setFpsLevelTo(0); AppSettings.setFpsCounterOn(true) }
@@ -256,12 +278,15 @@ object PanelShortcuts {
                 ForegroundAppService.reapplyFps(); refresh(0)
                 // the counter never shows over Wayfinder: turned on with the Hub or the panel on the top screen, say where it
                 // shows — once a panel
-                if (turnsOn && !fpsTold && (MainActivity.hubOn(android.view.Display.DEFAULT_DISPLAY) ||
-                        QuickPanelWindow.displayId == android.view.Display.DEFAULT_DISPLAY)) {
-                    fpsTold = true; Overlays.pill("The counter shows over games", Overlays.panelOrigin())
-                } },
+                if (turnsOn) tellFps() },
             "lock" to tile("lock", PanelRules.lockValue(AppSettings.focusLockEnabled, AppSettings.focusSticky, AppSettings.focusLockTop),
-                AppSettings.focusLockEnabled || AppSettings.focusSticky) {
+                AppSettings.focusLockEnabled || AppSettings.focusSticky,
+                // iiSU fork: the lock's words (PanelRules.lockValue); Off keeps the screen it remembers
+                options = choices(listOf(if (AppSettings.focusSticky) "Unlocked" else "Off", "Top screen", "Bottom screen"),
+                    when { !AppSettings.focusLockEnabled -> 0; AppSettings.focusLockTop -> 1; else -> 2 },
+                    footer = { app.wayfinder.ui.GlassSwitchRow("Stays where you send it", AppSettings.focusSticky,
+                        { AppSettings.setFocusStickyOn(it); refresh(0) }) }) {
+                    if (it == 0) AppSettings.setFocusLock(false) else AppSettings.setFocusLock(true, top = it == 1); refresh(0) }) {
                 // Applied when the panel closes (the panel itself has the controller now).
                 when {
                     // "Stays where sent": the tile only flips the screen — never "Off" while the
@@ -287,7 +312,9 @@ object PanelShortcuts {
             "guide" to tile("guide", null, false) { after(400) { ActionRegistry.perform(ThorAction.GUIDE) } },
             "keepon" to tile("keepon", onOff(keptOn), keptOn) {
                 ActionRegistry.perform(ThorAction.TOGGLE_KEEP_AWAKE); refresh(300) },
-            "boost" to tile("boost", if (SpeakerTune.boost == 0) "Off" else "+${SpeakerTune.boost} dB", SpeakerTune.boost > 0) {
+            "boost" to tile("boost", if (SpeakerTune.boost == 0) "Off" else "+${SpeakerTune.boost} dB", SpeakerTune.boost > 0,
+                options = choices(listOf("Off", "+6 dB", "+12 dB"), listOf(0, 6, 12).indexOf(SpeakerTune.boost)) {
+                    SpeakerTune.setVolumeBoost(listOf(0, 6, 12)[it]); refresh(0) }) {
                 SpeakerTune.setVolumeBoost(when (SpeakerTune.boost) { 0 -> 6; 6 -> 12; else -> 0 }); refresh(0) },
             "speaker" to tile("speaker", onOff(SpeakerTune.enabled), SpeakerTune.enabled) {
                 SpeakerTune.setOn(!SpeakerTune.enabled); refresh(0) },
@@ -298,7 +325,10 @@ object PanelShortcuts {
                 if (!SpeakerTune.enabled) Overlays.pill("Turn on the speaker sound fix first", Overlays.panelOrigin())
                 else { SpeakerTune.setEq(!SpeakerTune.eqOn); refresh(0) } },
             "lights" to tile("lights", null, false) { open(HubPage.LIGHTS) },
-            "lightsonoff" to tile("lightsonoff", if (lightsOff) "Off" else "On", !lightsOff) {
+            "lightsonoff" to tile("lightsonoff", if (lightsOff) "Off" else "On", !lightsOff,
+                options = choices(LightMode.values().map { it.label }, LightSettings.global.mode.ordinal,
+                    footer = { OptionLink("Light settings…") { open(HubPage.LIGHTS) } }) {
+                    QuickSettings.setStickLightMode(ctx, LightMode.values()[it]); refresh(0) }) {
                 QuickSettings.toggleStickLights(ctx); refresh(0) },
             "hub" to tile("hub", null, false) { open(HubPage.HOME) },
             // build 18 (GitHub #83): two presses — the first one asks (3 s), the second closes the panel and turns Wayfinder off.
@@ -311,7 +341,10 @@ object PanelShortcuts {
             "wifi" to switch("wifi", wifiOn) { "cmd wifi set-wifi-enabled ${if (it) "enabled" else "disabled"}" },
             "bt" to switch("bt", glob("bluetooth_on", 0) == 1) { "cmd bluetooth_manager ${if (it) "enable" else "disable"}" },
             "airplane" to switch("airplane", glob("airplane_mode_on", 0) == 1) { "cmd connectivity airplane-mode ${if (it) "enable" else "disable"}" },
-            "dnd" to switch("dnd", glob("zen_mode", 0) != 0) { "cmd notification set_dnd ${if (it) "priority" else "off"}" },
+            "dnd" to glob("zen_mode", 0).let { zen -> switch("dnd", zen != 0,
+                options = choices(listOf("Off", "Priority only", "Alarms only", "Total silence"), TileOptionRules.zenChoice(zen)) {
+                    QuickSettings.exec("cmd notification set_dnd ${TileOptionRules.ZEN_CMD[it]}"); refresh(500); refresh(1500) }) {
+                "cmd notification set_dnd ${if (it) "priority" else "off"}" } },
             "rotate" to switch("rotate", sys("accelerometer_rotation", 0) == 1) { "settings put system accelerometer_rotation ${if (it) 1 else 0}" },
             "location" to switch("location", sec("location_mode", 0) != 0) { "cmd location set-location-enabled $it" },
             // build 18 (E3, pF16): dimmed while charging, and a press says why (it did nothing)
@@ -338,9 +371,14 @@ object PanelShortcuts {
             // ── Thor
             // dev build 15 (WP2): the Thor's face style, three ways — the Controller page's setter (the names follow at once)
             "style" to (if (style == 0 && ButtonNames.thorPs) FaceStyle.PLAYSTATION else if (style == 0) FaceStyle.XBOX else FaceStyle.NINTENDO).let { cur ->
-                tile("style", if (style == 2) "AYN's controller off" else cur.label, style == 0) {
+                tile("style", if (style == 2) "AYN's controller off" else cur.label, style == 0,
+                    // AYN's controller off: none is checked
+                    options = choices(FaceStyle.values().map { it.label }, if (style == 2) -1 else cur.ordinal) {
+                        ButtonNames.setThorStyle(ctx, FaceStyle.values()[it]); refresh(500) }) {
                     ButtonNames.setThorStyle(ctx, if (style == 2) FaceStyle.NINTENDO else cur.next()); refresh(500) } },
-            "trigger" to tile("trigger", when (trig) { 0 -> "Analog"; 1 -> "Digital"; else -> "Both" }, trig != 2) {
+            "trigger" to tile("trigger", when (trig) { 0 -> "Analog"; 1 -> "Digital"; else -> "Both" }, trig != 2,
+                options = choices(listOf("Analog", "Digital", "Both"), trig) {
+                    QuickSettings.exec("settings put system trigger_input_mode $it"); refresh(500) }) {
                 QuickSettings.exec("settings put system trigger_input_mode ${(trig + 1) % 3}"); refresh(500) },
             "landscape" to switch("landscape", sys("force_landscape", 0) == 1) { "settings put system force_landscape ${if (it) 1 else 0}" },
             "vibration" to switch("vibration", sys("vibrate_on", 1) == 1) { "settings put system vibrate_on ${if (it) 1 else 0}" },
@@ -410,19 +448,26 @@ object QuickSettings {
         return rootCache[id] ?: default
     }
 
-    fun cyclePerformance(ctx: Context) {
-        val next = (Settings.System.getInt(ctx.contentResolver, "performance_mode", 0) + 1) % 3
-        exec("settings put system performance_mode $next; setprop persist.vendor.debug.mode $next")
-    }
+    fun cyclePerformance(ctx: Context) =
+        setPerformance((Settings.System.getInt(ctx.contentResolver, "performance_mode", 0) + 1) % 3)
+
+    /** iiSU fork: AYN's performance mode [v] (PerfMode.value) — the tile's press and its options window. */
+    fun setPerformance(v: Int) = exec("settings put system performance_mode $v; setprop persist.vendor.debug.mode $v")
+
+    /** Quiet → Smart → Sports → Custom → Quiet: one tap too many must never turn the fan OFF
+     *  mid-game (Off stays in AYN's own settings for whoever really wants it). The options window offers the same four. */
+    val FAN_CHOICES = listOf(FanMode.QUIET, FanMode.SMART, FanMode.SPORTS, FanMode.CUSTOM)
 
     fun cycleFan(ctx: Context) {
-        // Quiet → Smart → Sports → Custom → Quiet: one tap too many must never turn the fan OFF
-        // mid-game (Off stays in AYN's own settings for whoever really wants it).
-        val order = listOf(FanMode.QUIET, FanMode.SMART, FanMode.SPORTS, FanMode.CUSTOM).map { it.value }
+        val order = FAN_CHOICES.map { it.value }
         val cur = Settings.System.getInt(ctx.contentResolver, "fan_mode", 4)
-        val next = order[(order.indexOf(cur).coerceAtLeast(-1) + 1) % order.size]
-        PerfProfiles.markOwn(next)
-        exec("settings put system fan_mode $next")
+        setFan(order[(order.indexOf(cur).coerceAtLeast(-1) + 1) % order.size])
+    }
+
+    /** iiSU fork: AYN's fan mode [v] (FanMode.value), as the user's own. */
+    fun setFan(v: Int) {
+        PerfProfiles.markOwn(v)
+        exec("settings put system fan_mode $v")
     }
 
     /** AYN's fan-curve editor (exported), on the top screen. */
@@ -454,15 +499,26 @@ object QuickSettings {
     /** Off ↔ the lighting you had before (AYN's default if none). */
     fun toggleStickLights(ctx: Context) {
         LightSettings.init(ctx)
-        val prefs = ctx.getSharedPreferences("thor_panel", Context.MODE_PRIVATE)
+        setStickLightMode(ctx, if (LightSettings.global.mode != LightMode.OFF) LightMode.OFF
+            else savedLights(ctx)?.mode ?: LightProfile().mode)
+    }
+
+    /** iiSU fork: the stick lights in effect [mode] (the "Lights on/off" options window). Off keeps the lighting you had,
+     *  for the way back ([TileOptionRules.nextLightProfile]). */
+    fun setStickLightMode(ctx: Context, mode: LightMode) {
+        LightSettings.init(ctx)
         val cur = LightSettings.global
-        val next = if (cur.mode == LightMode.OFF)
-            runCatching { LightProfile.fromJson(org.json.JSONObject(prefs.getString("lights_before_off", "{}") ?: "{}")) }.getOrNull()
-                ?.takeIf { it.mode != LightMode.OFF } ?: LightProfile()
-        else { prefs.edit().putString("lights_before_off", cur.toJson().toString()).apply(); cur.copy(mode = LightMode.OFF) }
+        if (mode == LightMode.OFF && cur.mode != LightMode.OFF)
+            ctx.getSharedPreferences("thor_panel", Context.MODE_PRIVATE).edit().putString("lights_before_off", cur.toJson().toString()).apply()
+        val next = TileOptionRules.nextLightProfile(cur, savedLights(ctx), mode)
         LightSettings.setGlobalProfile(next)
         StickLights.apply(ctx, next)
     }
+
+    private fun savedLights(ctx: Context): LightProfile? = runCatching {
+        LightProfile.fromJson(org.json.JSONObject(ctx.getSharedPreferences("thor_panel", Context.MODE_PRIVATE)
+            .getString("lights_before_off", "{}") ?: "{}"))
+    }.getOrNull()?.takeIf { it.mode != LightMode.OFF }
 
     fun plugged(ctx: Context): Boolean = runCatching {
         val b = ctx.registerReceiver(null, android.content.IntentFilter(Intent.ACTION_BATTERY_CHANGED))

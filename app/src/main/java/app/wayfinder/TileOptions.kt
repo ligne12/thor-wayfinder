@@ -9,6 +9,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -16,9 +18,12 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.dp
+import app.wayfinder.ui.FocusableGlass
 import app.wayfinder.ui.GlassSheet
 import app.wayfinder.ui.IisuToggleTile
+import app.wayfinder.ui.LocalGlass
 import app.wayfinder.ui.ModalHeader
+import app.wayfinder.ui.Radii
 
 /**
  * iiSU fork: a panel tile's options — what a long press on it opens, as iOS's control center does (Wi-Fi networks, a value
@@ -47,15 +52,27 @@ fun tileLongPress(t: PanelTile, open: () -> Unit): () -> Unit {
     }
 }
 
+/** A link at the foot of an options window ("Fan curve…"), drawn as "App pairs"' last row. */
+@Composable
+fun OptionLink(text: String, onClick: () -> Unit) {
+    val g = LocalGlass.current
+    FocusableGlass(onClick = onClick, modifier = Modifier.fillMaxWidth(), radius = Radii.Row) {
+        Text(text, color = g.accent, style = MaterialTheme.typography.bodyLarge,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp))
+    }
+}
+
 /** [t]'s options window: "App pairs"' sheet, capped for the wide top screen. B, a tap outside or Close shut it. */
 @Composable
 fun TileOptionsSheet(t: PanelTile, onClose: () -> Unit) {
     val options = t.options ?: return
     val first = remember { FocusRequester() }
-    GlassSheet(onDismiss = onClose, modifier = Modifier.fillMaxWidth(0.92f).widthIn(max = 560.dp),
+    // the cap first: after fillMaxWidth its exact width can't be narrowed (it spread over the whole top screen)
+    GlassSheet(onDismiss = onClose, modifier = Modifier.widthIn(max = 560.dp).fillMaxWidth(0.92f),
         first = if (options is TileOptions.Choices) first else null, contentPadding = 0.dp) {
         Column(Modifier.padding(18.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            ModalHeader(t.label, onClose)
+            // Thomas: no Close button — B, a tap outside or a pick close it
+            ModalHeader(t.label, onClose, closeVisible = false)
             when (options) {
                 is TileOptions.Choices -> {
                     // the chosen one in the selection gradient, as the sound panel's ringer modes; the focus opens on it
