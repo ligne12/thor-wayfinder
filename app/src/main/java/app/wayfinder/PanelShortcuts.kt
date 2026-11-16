@@ -406,7 +406,10 @@ object PanelShortcuts {
  *  it can't act (Performance with a tuner): a long press says it too. */
 class PanelTile(val icon: ImageVector, val label: String, val value: String?, val on: Boolean, val pkg: String? = null,
                 val disabled: Boolean = false, val options: TileOptions? = null, val sayOnLong: Boolean = false,
-                val action: () -> Unit)
+                val action: () -> Unit) {
+    /** What TalkBack announces for a long press: only where it opens something (a tile of list C swallows it silently). */
+    val longPressLabel: String? get() = if (options != null) "Options" else null
+}
 
 /** Build 18 (E3): the quick panel's pure rules (JVM tests: PanelRulesTest). */
 internal object PanelRules {

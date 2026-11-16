@@ -713,7 +713,7 @@ private fun TilesGrid(close: () -> Unit) {
                     IisuToggleTile(t.icon, t.label, t.on, Modifier.weight(1f), height = 64.dp,
                         description = listOfNotNull(t.label, t.value).joinToString(": "), value = t.value, disabled = t.disabled,
                         iconContent = { tint -> TileIcon(t.icon, t.pkg, tint, 22.dp) },
-                        onLongClick = tileLongPress(t) { optionsFor = id }) { t.action() }
+                        onLongClick = tileLongPress(t) { optionsFor = id }, longClickLabel = t.longPressLabel) { t.action() }
                 }
                 repeat(4 - row.size) { Box(Modifier.weight(1f)) }
             }

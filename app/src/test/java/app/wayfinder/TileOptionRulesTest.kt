@@ -1,5 +1,6 @@
 package app.wayfinder
 
+import androidx.compose.material.icons.rounded.Apps
 import app.wayfinder.lights.LightMode
 import app.wayfinder.lights.LightProfile
 import org.junit.Assert.assertEquals
@@ -61,6 +62,14 @@ class TileOptionRulesTest {
 
     @Test fun savedInRange_noScanResults() =
         assertEquals(emptyList<String>(), TileOptionRules.savedInRange(wifi("networks"), "No scan results\n"))
+
+    // TalkBack: a long press is announced only where it opens something (a tile of list C swallows it silently)
+    @Test fun longPressLabel_onlyForTilesWithOptions() {
+        val icon = androidx.compose.material.icons.Icons.Rounded.Apps
+        assertEquals("Options", PanelTile(icon, "Fan", "Smart", true, options = TileOptions.Choices(emptyList(), {})) {}.longPressLabel)
+        assertEquals(null, PanelTile(icon, "Sleep", null, false) {}.longPressLabel)
+        assertEquals(null, PanelTile(icon, "Performance", "Pulse", false, sayOnLong = true) {}.longPressLabel)
+    }
 
     @Test fun lightMode_toOff_keepsTheRest() {
         val cur = LightProfile(mode = LightMode.STATIC, left = 5, right = 6)

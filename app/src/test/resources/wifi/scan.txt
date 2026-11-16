@@ -1,7 +1,7 @@
     BSSID              Frequency      RSSI           Age(sec)     SSID                                 Flags
-  02:00:00:00:00:01       5500     -48          1.204        Home 5G                           [WPA2-PSK-CCMP][RSN-PSK-CCMP][ESS]
-  02:00:00:00:00:02       2437     -60          1.204        Home 5G                           [WPA2-PSK-CCMP][RSN-PSK-CCMP][ESS]
-  02:00:00:00:00:03       2412     -81          3.517        Cafe                              [ESS]
-  02:00:00:00:00:04       5180     -67          1.880        Office                            [WPA2-PSK-CCMP][RSN-SAE-CCMP][ESS]
-  02:00:00:00:00:05       5180     -52          1.880        Neighbour                         [WPA2-PSK-CCMP][ESS]
-  02:00:00:00:00:06       2462     -70          2.001                                          [WPA2-PSK-CCMP][ESS]
+  02:00:00:00:00:01       5500    -45(0:-45/1:-84)   134,732    Home 5G                           [WPA2-PSK-CCMP][RSN-PSK-CCMP][ESS][WPS]
+  02:00:00:00:00:02       2462    -53(0:-55/1:-57)   141,182    Home 5G                           [WPA2-PSK-CCMP][RSN-PSK-CCMP][ESS][WPS]
+  02:00:00:00:00:03       2412    -81(0:-83/1:-85)   141,738    Cafe                              [ESS]
+  02:00:00:00:00:04       5180    -67(0:-70/1:-69)   141,441    Office                            [WPA2-PSK-CCMP][RSN-SAE-CCMP][ESS]
+  02:00:00:00:00:05       2412    -51(0:-51/1:-61)   141,716    Neighbour                         [WPA2-PSK-CCMP][RSN-PSK-CCMP][ESS]
+  02:00:00:00:00:06       2462    -70                2,001                                        [WPA2-PSK-CCMP][ESS]

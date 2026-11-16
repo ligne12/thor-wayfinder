@@ -40,6 +40,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.onLongClick
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -82,7 +83,7 @@ internal fun tileLayout(heightDp: Float, hasValue: Boolean): TileLayout = when {
 fun IisuToggleTile(icon: ImageVector?, label: String, on: Boolean, modifier: Modifier = Modifier, height: Dp = 72.dp,
                    description: String = label, value: String? = null, disabled: Boolean = false,
                    iconContent: (@Composable (tint: Color) -> Unit)? = null, focusRequester: FocusRequester? = null,
-                   onLongClick: (() -> Unit)? = null, onClick: () -> Unit) {
+                   onLongClick: (() -> Unit)? = null, longClickLabel: String? = null, onClick: () -> Unit) {
     val g = LocalGlass.current
     val tile = RoundedCornerShape(16.dp)
     val gate = remember { ReleaseGate() }
@@ -128,7 +129,9 @@ fun IisuToggleTile(icon: ImageVector?, label: String, on: Boolean, modifier: Mod
         }
         .semantics {
             contentDescription = description; onClick { click(); true }
-            if (onLongClick != null) this.onLongClick(label = null) { long?.invoke(); true }   // `this.`: not the parameter
+            selected = on   // on / the chosen option: said, not only coloured
+            // announced only with a label: a long press that does nothing isn't offered to TalkBack. `this.`: not the parameter
+            if (onLongClick != null && longClickLabel != null) this.onLongClick(label = longClickLabel) { long?.invoke(); true }
         },
         contentAlignment = Alignment.Center) {
         when (tileLayout(height.value, value != null)) {

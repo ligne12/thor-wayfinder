@@ -32,12 +32,12 @@ object TileOptionRules {
         // "<id>  <ssid…>  <security>": the SSID is what lies between (it may hold spaces)
         val saved = networks.lines().filter { it.isNotBlank() && !it.startsWith("Network Id") }
             .mapNotNull { l -> l.trim().split(ws).takeIf { it.size >= 3 }?.let { it.subList(1, it.size - 1).joinToString(" ") } }.toSet()
-        // "<bssid> <frequency> <rssi> <age> <ssid…> [flags]"
+        // "<bssid> <frequency> <rssi> <age> <ssid…> [flags]"; on the Thor the RSSI carries each antenna's, "-45(0:-45/1:-84)"
         val seen = HashMap<String, Int>()
         for (l in scan.lines()) {
             val t = l.trim().split(ws, limit = 5)
             if (t.size < 5 || ':' !in t[0]) continue
-            val rssi = t[2].toIntOrNull() ?: continue
+            val rssi = Regex("^-?\\d+").find(t[2])?.value?.toIntOrNull() ?: continue
             val ssid = Regex("^(.*?)\\s*(\\[.*])?$").find(t[4])?.groupValues?.get(1)?.trim()?.split(ws)?.joinToString(" ")
             if (ssid.isNullOrEmpty()) continue   // a hidden network
             seen[ssid] = maxOf(seen[ssid] ?: Int.MIN_VALUE, rssi)

@@ -236,7 +236,7 @@ object NotificationCenter {
                     Row(Modifier.fillMaxWidth().then(pullUp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         for ((id, tile) in TILES.mapNotNull { id -> tiles[id]?.let { id to it } }) IisuToggleTile(tile.icon, tile.label, tile.on,
                             Modifier.weight(1f), height = 64.dp, description = "${tile.label}: ${tile.value ?: ""}",
-                            onLongClick = tileLongPress(tile) { optionsFor = id }) { tile.action() }
+                            onLongClick = tileLongPress(tile) { optionsFor = id }, longClickLabel = tile.longPressLabel) { tile.action() }
                     }
                 }
                 item(span = { GridItemSpan(maxLineSpan) }) {
