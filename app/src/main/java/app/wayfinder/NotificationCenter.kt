@@ -102,7 +102,7 @@ object NotificationCenter {
     fun show(service: AccessibilityService): Boolean {
         if (view != null) { shown = true; return true }
         val d = service.getSystemService(android.hardware.display.DisplayManager::class.java).getDisplay(0) ?: return false
-        val ctx = android.view.ContextThemeWrapper(service.createDisplayContext(d), R.style.Theme_Wayfinder_Glass)
+        val ctx = android.view.ContextThemeWrapper(overlayContext(service, d), R.style.Theme_Wayfinder_Glass)
         val wm = ctx.getSystemService(WindowManager::class.java)
         NotificationsListener.reconnectIfNeeded(service)
         app.wayfinder.ui.IisuLookSource.refreshAsync(service)

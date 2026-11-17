@@ -132,7 +132,7 @@ object QuickPanelWindow {
     fun show(service: android.accessibilityservice.AccessibilityService, display: Int): Boolean {
         if (view != null) return true
         val d = service.getSystemService(android.hardware.display.DisplayManager::class.java).getDisplay(display) ?: return false
-        val ctx = android.view.ContextThemeWrapper(service.createDisplayContext(d), R.style.Theme_Wayfinder_Glass)
+        val ctx = android.view.ContextThemeWrapper(overlayContext(service, d), R.style.Theme_Wayfinder_Glass)
         val wm = ctx.getSystemService(android.view.WindowManager::class.java)
         AppSettings.init(ctx)
         // Every settings store the UI touches (the Hub may never have run since the app started).

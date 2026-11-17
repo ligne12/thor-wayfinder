@@ -17,7 +17,8 @@
 **Why.** On my Thor, iiSU is the launcher on both screens. Wayfinder's panels (glass, aurora, blur) sat on top
 of it and looked like another device. This fork dresses every Wayfinder surface in iiSU's own settings look, and
 follows iiSU's appearance settings, read from iiSU itself: light or dark, colours, selection gradient, font.
-Switch iiSU to dark and Wayfinder follows, live.
+Switch iiSU to dark and Wayfinder follows, live. With iiSU's Theme Style on System, the Dark theme tile switches all
+three: Android, iiSU and Wayfinder.
 
 **What changed** (everything else is the original Wayfinder):
 

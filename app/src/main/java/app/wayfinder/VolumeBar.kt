@@ -157,7 +157,7 @@ object VolumeBar {
         app.wayfinder.ui.IisuLookSource.refreshAsync(service)   // iiSU's theme, font, glass colour may have changed
         removeBar()   // one bar at a time: the controller moved to the other screen
         val d = service.getSystemService(android.hardware.display.DisplayManager::class.java).getDisplay(display) ?: return false
-        val ctx = android.view.ContextThemeWrapper(service.createDisplayContext(d), R.style.Theme_Wayfinder_Glass)
+        val ctx = android.view.ContextThemeWrapper(overlayContext(service, d), R.style.Theme_Wayfinder_Glass)
         val wm = ctx.getSystemService(android.view.WindowManager::class.java)
         LinkedVolume.init(ctx)   // the wide form's per-screen sliders
         val owner = app.wayfinder.keyboard.ComposeOwner()

@@ -115,7 +115,7 @@ object RecentsScreen {
             remove()   // one at a time: Recents opened on the other screen
         }
         val d = service.getSystemService(android.hardware.display.DisplayManager::class.java).getDisplay(display) ?: return false
-        val ctx = android.view.ContextThemeWrapper(service.createDisplayContext(d), R.style.Theme_Wayfinder_Glass)
+        val ctx = android.view.ContextThemeWrapper(overlayContext(service, d), R.style.Theme_Wayfinder_Glass)
         val wm = ctx.getSystemService(WindowManager::class.java)
         this.service = service; this.origin = origin; this.always = always; this.otherScreenApps = otherScreenApps
         removed = emptySet(); leaving = false
