@@ -1,0 +1,6 @@
+Network Id      SSID                         Security type
+0            Home 5G                          wpa2-psk
+0            Home 5G                          wpa3-sae^
+1            Office                           wpa2-psk
+1            Office                           wpa3-sae^
+2            Cafe                             open

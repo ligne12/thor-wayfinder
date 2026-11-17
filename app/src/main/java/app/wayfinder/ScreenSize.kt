@@ -19,6 +19,17 @@ import android.view.Surface
  * of 1920. `currentWindowMetrics` of a display context reads the same process configuration. A `Display` asked for
  * through a context of ANOTHER display carries no Resources and answers its own logical size.
  */
+/**
+ * iiSU fork: the context an overlay window on [d] is made from. A display context (above) takes the PROCESS configuration
+ * at every global change: a theme switch laid the bottom screen's control center out 1920 px wide in its 1240 px window
+ * (the top screen's centers the other way round). A window context follows its own display's configuration; the
+ * accessibility service gives its overlays its token (AccessibilityService.createWindowContext). Android 11: as before.
+ */
+fun overlayContext(service: Context, d: Display): Context =
+    if (android.os.Build.VERSION.SDK_INT >= 31)
+        service.createWindowContext(d, android.view.WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY, null)
+    else service.createDisplayContext(d)
+
 object ScreenSize {
     /** A size in px (the JVM-tested parts use it: no android.graphics.Point there). */
     data class Px(val w: Int, val h: Int) {

@@ -5,6 +5,7 @@ import android.content.Context
 import android.text.format.DateUtils
 import android.view.KeyEvent
 import android.view.WindowManager
+import androidx.activity.setViewTreeOnBackPressedDispatcherOwner
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
@@ -81,7 +82,7 @@ object NotificationCenter {
     private val main = android.os.Handler(android.os.Looper.getMainLooper())
     private var view: android.view.View? = null
     private var wm: WindowManager? = null
-    private var owner: app.wayfinder.keyboard.ComposeOwner? = null
+    private var owner: QuickPanelWindow.PanelOwner? = null
     private var shown by mutableStateOf(false)   // the sheet in (true) or sliding out (false: the window goes once it is out)
     private var tick by mutableIntStateOf(0)    // the tiles read again (a switch writes through root, a moment later)
     private var clearArmed by mutableStateOf(false)   // the controller's first Select: "Clear notifications" asks for the second
@@ -101,18 +102,21 @@ object NotificationCenter {
     fun show(service: AccessibilityService): Boolean {
         if (view != null) { shown = true; return true }
         val d = service.getSystemService(android.hardware.display.DisplayManager::class.java).getDisplay(0) ?: return false
-        val ctx = android.view.ContextThemeWrapper(service.createDisplayContext(d), R.style.Theme_Wayfinder_Glass)
+        val ctx = android.view.ContextThemeWrapper(overlayContext(service, d), R.style.Theme_Wayfinder_Glass)
         val wm = ctx.getSystemService(WindowManager::class.java)
         NotificationsListener.reconnectIfNeeded(service)
         app.wayfinder.ui.IisuLookSource.refreshAsync(service)
-        val owner = app.wayfinder.keyboard.ComposeOwner()
+        // iiSU fork: the quick panel's owner — a Back dispatcher, so B closes a tile's options window before the center
+        val owner = QuickPanelWindow.PanelOwner()
         val root = object : android.widget.FrameLayout(ctx) {
             // as the quick panel's root: the stick / D-pad move the focus, R3 / L3 / Start never "click"
             private val nav = app.wayfinder.ui.PadNav({ getChildAt(0) }, { dispatchKeyEvent(it) })
             private val padFallback = app.wayfinder.ui.PadFallbackFilter()
             override fun dispatchKeyEvent(event: KeyEvent): Boolean {
                 if (event.keyCode == KeyEvent.KEYCODE_BACK || event.keyCode == KeyEvent.KEYCODE_BUTTON_B) {
-                    if (event.action == KeyEvent.ACTION_UP && !event.isCanceled) close()
+                    if (event.action == KeyEvent.ACTION_UP && !event.isCanceled) {
+                        if (owner.onBackPressedDispatcher.hasEnabledCallbacks()) owner.onBackPressedDispatcher.onBackPressed() else close()
+                    }
                     return true
                 }
                 if (event.keyCode == KeyEvent.KEYCODE_BUTTON_MODE) return true
@@ -128,9 +132,16 @@ object NotificationCenter {
             override fun onWindowFocusChanged(hasWindowFocus: Boolean) { super.onWindowFocusChanged(hasWindowFocus); if (!hasWindowFocus) nav.stop() }
             override fun onDetachedFromWindow() { nav.stop(); super.onDetachedFromWindow() }
         }
-        owner.attach(root)
+        owner.base.attach(root)
+        root.setViewTreeOnBackPressedDispatcherOwner(owner)
         root.addView(androidx.compose.ui.platform.ComposeView(ctx).apply {
-            setContent { app.wayfinder.ui.IisuLookSource.Follow(ctx); ThorGlassTheme(dark = GlassTokens.isDark(ctx)) { CappedFontScale { Center(ctx) } } }
+            setContent {
+                androidx.compose.runtime.CompositionLocalProvider(androidx.activity.compose.LocalOnBackPressedDispatcherOwner provides owner) {
+                    app.wayfinder.ui.IisuLookSource.Follow(ctx)
+                    // iiSU fork: WindowRoot — the options window's sheet host and Back layer, as in the quick panel
+                    ThorGlassTheme(dark = GlassTokens.isDark(ctx)) { CappedFontScale { app.wayfinder.ui.WindowRoot { Center(ctx) } } }
+                }
+            }
         })
         root.addOnAttachStateChangeListener(object : android.view.View.OnAttachStateChangeListener {
             override fun onViewAttachedToWindow(v: android.view.View) {}
@@ -152,7 +163,7 @@ object NotificationCenter {
             main.post { shown = true }   // slides in from its first frame
             true
         } catch (t: Throwable) {
-            owner.destroy()
+            owner.base.destroy()
             android.util.Log.w(TAG, "addView: ${t.javaClass.simpleName}: ${t.message}")
             NotificationGesture.stop()   // no center: Android's shade back
             false
@@ -173,7 +184,7 @@ object NotificationCenter {
         val v = view ?: return
         view = null
         runCatching { wm?.removeViewImmediate(v) }
-        owner?.destroy()
+        owner?.base?.destroy()
         wm = null; owner = null; shown = false; clearArmed = false
         ForegroundAppService.notificationCenterClosed()   // the controller back where it was
     }
@@ -209,6 +220,8 @@ object NotificationCenter {
         }
         val items = NotificationModel.visible(NotificationsListener.items)
         var pull by remember { mutableFloatStateOf(0f) }
+        // iiSU fork: the tile whose options window is open (a long press) — out here: the grid's items come and go
+        var optionsFor by remember { mutableStateOf<String?>(null) }
         // a pull up on the tiles or the title closes the sheet (the cards below scroll); the tiles alone sit too near the
         // top for 80 dp of travel
         val pullUp = Modifier.pointerInput(Unit) {
@@ -221,8 +234,9 @@ object NotificationCenter {
                 verticalArrangement = Arrangement.spacedBy(12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 item(span = { GridItemSpan(maxLineSpan) }) {
                     Row(Modifier.fillMaxWidth().then(pullUp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        for (tile in TILES.mapNotNull { id -> tiles[id] }) IisuToggleTile(tile.icon, tile.label, tile.on,
-                            Modifier.weight(1f), height = 64.dp, description = "${tile.label}: ${tile.value ?: ""}") { tile.action() }
+                        for ((id, tile) in TILES.mapNotNull { id -> tiles[id]?.let { id to it } }) IisuToggleTile(tile.icon, tile.label, tile.on,
+                            Modifier.weight(1f), height = 64.dp, description = "${tile.label}: ${tile.value ?: ""}",
+                            onLongClick = tileLongPress(tile) { optionsFor = id }, longClickLabel = tile.longPressLabel) { tile.action() }
                     }
                 }
                 item(span = { GridItemSpan(maxLineSpan) }) {
@@ -247,6 +261,7 @@ object NotificationCenter {
             Box(Modifier.align(Alignment.CenterHorizontally).padding(top = 20.dp).size(40.dp, 5.dp).clip(CircleShape)   // Thomas: not stuck to the last card
                 .background(g.textTertiary.copy(alpha = 0.5f)))
         }
+        optionsFor?.let { tiles[it] }?.takeIf { it.options != null }?.let { TileOptionsSheet(it) { optionsFor = null } }
     }
 
     private fun nowWord(): String = android.content.res.Resources.getSystem().let { r ->
